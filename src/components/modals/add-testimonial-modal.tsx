@@ -1,19 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Star } from "lucide-react";
+import { Star, X } from "lucide-react";
 
 interface AddTestimonialModalProps {
   open?: boolean;
@@ -50,35 +42,35 @@ export function AddTestimonialModal({
         `https://api.dicebear.com/7.x/avataaars/svg?seed=${clientName}`,
       featured,
     };
-
+    
     if (onSave) {
       onSave(newTestimonial);
     }
-
-    // Reset form
-    setClientName("");
-    setClientTitle("");
-    setCompanyName("");
-    setQuote("");
-    setRating(5);
-    setProjectType("");
-    setAvatar("");
-    setFeatured(false);
-
+    
     if (onOpenChange) {
       onOpenChange(false);
     }
   };
 
+  if (!open) {
+    return null;
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Add Testimonial</DialogTitle>
-          <DialogDescription>
-            Add a new client testimonial to showcase in your proposals.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-[600px] max-h-[90vh] overflow-y-auto p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold">Add Testimonial</h2>
+          <button 
+            onClick={() => onOpenChange && onOpenChange(false)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          Add a client testimonial to showcase on your agency profile.
+        </p>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -100,55 +92,63 @@ export function AddTestimonialModal({
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="companyName">Company Name</Label>
-              <Input
-                id="companyName"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Acme Inc."
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="projectType">Project Type</Label>
-              <Input
-                id="projectType"
-                value={projectType}
-                onChange={(e) => setProjectType(e.target.value)}
-                placeholder="Website Redesign"
-              />
-            </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="companyName">Company Name</Label>
+            <Input
+              id="companyName"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              placeholder="TechStart Inc."
+            />
           </div>
+          
           <div className="space-y-2">
             <Label htmlFor="quote">Testimonial Quote</Label>
             <Textarea
               id="quote"
               value={quote}
               onChange={(e) => setQuote(e.target.value)}
-              placeholder="What the client said about your work..."
-              rows={4}
+              placeholder="Working with this agency transformed our brand identity and online presence..."
+              className="min-h-[100px]"
             />
           </div>
-          <div className="space-y-2">
-            <Label>Rating</Label>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setRating(star)}
-                  className="focus:outline-none"
-                >
-                  <Star
-                    className={`h-6 w-6 ${star <= rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
-                  />
-                </button>
-              ))}
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="projectType">Project Type</Label>
+              <Input
+                id="projectType"
+                value={projectType}
+                onChange={(e) => setProjectType(e.target.value)}
+                placeholder="Brand Strategy & Website Redesign"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Rating</Label>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setRating(star)}
+                    className="focus:outline-none"
+                  >
+                    <Star
+                      className={`h-5 w-5 ${
+                        star <= rating
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-gray-300"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="avatar">Client Avatar URL (optional)</Label>
+            <Label htmlFor="avatar">Avatar URL (optional)</Label>
             <Input
               id="avatar"
               value={avatar}
@@ -159,7 +159,8 @@ export function AddTestimonialModal({
               Leave blank to generate an avatar automatically
             </p>
           </div>
-          <div className="flex items-center space-x-2">
+          
+          <div className="flex items-center gap-2">
             <input
               type="checkbox"
               id="featured"
@@ -167,12 +168,12 @@ export function AddTestimonialModal({
               onChange={(e) => setFeatured(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            <Label htmlFor="featured" className="text-sm font-medium">
+            <Label htmlFor="featured" className="text-sm">
               Feature this testimonial
             </Label>
           </div>
         </div>
-        <DialogFooter>
+        <div className="flex justify-end gap-2 mt-4">
           <Button
             variant="outline"
             onClick={() => onOpenChange && onOpenChange(false)}
@@ -180,8 +181,8 @@ export function AddTestimonialModal({
             Cancel
           </Button>
           <Button onClick={handleSave}>Save Testimonial</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </div>
   );
 }

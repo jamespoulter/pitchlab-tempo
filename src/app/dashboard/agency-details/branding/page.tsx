@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -18,10 +21,11 @@ import {
   Download,
   Upload,
 } from "lucide-react";
+import { EditBrandingModal } from "@/components/modals/edit-branding-modal";
 
 export default function AgencyBrandingPage() {
-  // This would normally fetch real data from the database
-  const brandingDetails = {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [brandingDetails, setBrandingDetails] = useState({
     colors: [
       { name: "Primary", color: "#0369a1", variable: "--primary" },
       { name: "Secondary", color: "#0e7490", variable: "--secondary" },
@@ -63,6 +67,12 @@ export default function AgencyBrandingPage() {
       },
     ],
     brandGuidelines: "brand-guidelines.pdf",
+  });
+
+  const handleSaveBranding = (updatedBranding: any) => {
+    setBrandingDetails(updatedBranding);
+    // Here you would normally save the data to your database
+    console.log("Updated branding:", updatedBranding);
   };
 
   return (
@@ -75,7 +85,11 @@ export default function AgencyBrandingPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-1">
+          <Button 
+            variant="outline" 
+            className="gap-1"
+            onClick={() => setIsEditModalOpen(true)}
+          >
             <Edit className="h-4 w-4" />
             <span>Edit Branding</span>
           </Button>
@@ -494,6 +508,13 @@ export default function AgencyBrandingPage() {
           </Card>
         </div>
       </div>
+
+      <EditBrandingModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        initialData={brandingDetails}
+        onSave={handleSaveBranding}
+      />
     </div>
   );
 }
