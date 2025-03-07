@@ -50,3 +50,9 @@ node_modules/
 .git
 
 .github/
+
+**/tempobook/dynamic/
+**/tempobook/storyboards/
+
+**/tempobook/dynamic/
+**/tempobook/storyboards/
