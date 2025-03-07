@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -16,6 +19,9 @@ import {
   Eye,
   CheckCircle,
   XCircle,
+  Edit,
+  Copy,
+  Trash,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -23,8 +29,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function ProposalsPage() {
+  const router = useRouter();
+  
   // This would normally fetch real data from the database
   const proposals = [
     {
@@ -93,6 +103,14 @@ export default function ProposalsPage() {
     },
   ];
 
+  const handleEditProposal = (id: number) => {
+    router.push(`/dashboard/proposals/${id}`);
+  };
+
+  const handleViewProposal = (id: number) => {
+    router.push(`/dashboard/proposals/preview?id=${id}`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
@@ -102,10 +120,12 @@ export default function ProposalsPage() {
             Manage and track all your client proposals.
           </p>
         </div>
-        <Button className="flex items-center gap-2">
-          <Plus className="h-4 w-4" />
-          <span>New Proposal</span>
-        </Button>
+        <Link href="/dashboard/proposals/new">
+          <Button className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            <span>New Proposal</span>
+          </Button>
+        </Link>
       </div>
 
       <Card>
@@ -188,10 +208,22 @@ export default function ProposalsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View</DropdownMenuItem>
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                        <DropdownMenuItem>Delete</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewProposal(proposal.id)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditProposal(proposal.id)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Trash className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
