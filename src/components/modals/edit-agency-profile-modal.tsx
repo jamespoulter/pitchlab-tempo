@@ -1,14 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,15 +68,25 @@ export function EditAgencyProfileModal({
     }
   };
 
+  if (!open) {
+    return null;
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Agency Profile</DialogTitle>
-          <DialogDescription>
-            Update your agency's profile information.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-[600px] max-h-[90vh] overflow-y-auto p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold">Edit Agency Profile</h2>
+          <button 
+            onClick={() => onOpenChange && onOpenChange(false)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          Update your agency's profile information.
+        </p>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -168,3 +170,89 @@ export function EditAgencyProfileModal({
           
           <div className="space-y-2">
             <Label>Industries Served</Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {industries.map((industry, index) => (
+                <div
+                  key={index}
+                  className="flex items-center bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-sm"
+                >
+                  {industry}
+                  <button
+                    type="button"
+                    onClick={() => removeIndustry(index)}
+                    className="ml-1 text-blue-500 hover:text-blue-700"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newIndustry}
+                onChange={(e) => setNewIndustry(e.target.value)}
+                placeholder="Add industry (e.g., Technology)"
+                className="flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addIndustry();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={addIndustry}
+                size="sm"
+                className="flex items-center"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="description">Agency Description</Label>
+            <Textarea
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Describe your agency's services and expertise..."
+              className="min-h-[100px]"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="mission">Mission Statement</Label>
+            <Textarea
+              id="mission"
+              value={mission}
+              onChange={(e) => setMission(e.target.value)}
+              placeholder="Your agency's mission statement..."
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="vision">Vision Statement</Label>
+            <Textarea
+              id="vision"
+              value={vision}
+              onChange={(e) => setVision(e.target.value)}
+              placeholder="Your agency's vision for the future..."
+            />
+          </div>
+        </div>
+        <div className="flex justify-end gap-2 mt-4">
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange && onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button onClick={handleSave}>Save Changes</Button>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -21,8 +24,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AddCaseStudyModal } from "@/components/modals/add-case-study-modal";
 
 export default function CaseStudiesPage() {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
   // This would normally fetch real data from the database
   const caseStudies = [
     {
@@ -96,7 +102,10 @@ export default function CaseStudiesPage() {
             Showcase your agency's successful client projects.
           </p>
         </div>
-        <Button className="flex items-center gap-2">
+        <Button 
+          className="flex items-center gap-2"
+          onClick={() => setIsAddModalOpen(true)}
+        >
           <Plus className="h-4 w-4" />
           <span>Add Case Study</span>
         </Button>
@@ -216,6 +225,15 @@ export default function CaseStudiesPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AddCaseStudyModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        onSave={(caseStudy) => {
+          console.log("New case study:", caseStudy);
+          // Here you would normally save the data to your database
+        }}
+      />
     </div>
   );
 }

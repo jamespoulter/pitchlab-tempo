@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -24,8 +27,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AddServiceModal } from "@/components/modals/add-service-modal";
 
 export default function ServicesPage() {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
   // This would normally fetch real data from the database
   const services = [
     {
@@ -135,7 +141,10 @@ export default function ServicesPage() {
             Manage your agency's service offerings and packages.
           </p>
         </div>
-        <Button className="flex items-center gap-2">
+        <Button 
+          className="flex items-center gap-2"
+          onClick={() => setIsAddModalOpen(true)}
+        >
           <Plus className="h-4 w-4" />
           <span>Add Service</span>
         </Button>
@@ -340,6 +349,15 @@ export default function ServicesPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AddServiceModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        onSave={(service) => {
+          console.log("New service:", service);
+          // Here you would normally save the data to your database
+        }}
+      />
     </div>
   );
 }

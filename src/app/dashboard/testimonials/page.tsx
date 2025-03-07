@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -24,8 +27,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AddTestimonialModal } from "@/components/modals/add-testimonial-modal";
 
 export default function TestimonialsPage() {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
   // This would normally fetch real data from the database
   const testimonials = [
     {
@@ -117,7 +123,10 @@ export default function TestimonialsPage() {
             Manage client testimonials and success stories.
           </p>
         </div>
-        <Button className="flex items-center gap-2">
+        <Button 
+          className="flex items-center gap-2"
+          onClick={() => setIsAddModalOpen(true)}
+        >
           <Plus className="h-4 w-4" />
           <span>Add Testimonial</span>
         </Button>
@@ -403,6 +412,15 @@ export default function TestimonialsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AddTestimonialModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        onSave={(testimonial) => {
+          console.log("New testimonial:", testimonial);
+          // Here you would normally save the data to your database
+        }}
+      />
     </div>
   );
 }

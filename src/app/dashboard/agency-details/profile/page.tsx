@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -18,8 +21,11 @@ import {
   Calendar,
   Users,
 } from "lucide-react";
+import { EditAgencyProfileModal } from "@/components/modals/edit-agency-profile-modal";
 
 export default function AgencyProfilePage() {
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
   // This would normally fetch real data from the database
   const agencyDetails = {
     name: "Creative Solutions Agency",
@@ -62,7 +68,11 @@ export default function AgencyProfilePage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="gap-1">
+          <Button 
+            variant="outline" 
+            className="gap-1"
+            onClick={() => setIsEditModalOpen(true)}
+          >
             <Edit className="h-4 w-4" />
             <span>Edit Profile</span>
           </Button>
@@ -307,6 +317,16 @@ export default function AgencyProfilePage() {
           </Card>
         </div>
       </div>
+
+      <EditAgencyProfileModal
+        open={isEditModalOpen}
+        onOpenChange={setIsEditModalOpen}
+        initialData={agencyDetails}
+        onSave={(updatedProfile) => {
+          console.log("Updated profile:", updatedProfile);
+          // Here you would normally save the data to your database
+        }}
+      />
     </div>
   );
 }

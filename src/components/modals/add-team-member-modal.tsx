@@ -1,19 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { X, Plus } from "lucide-react";
 
 interface AddTeamMemberModalProps {
   open?: boolean;
@@ -31,8 +23,19 @@ export function AddTeamMemberModal({
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [bio, setBio] = useState("");
-  const [skills, setSkills] = useState("");
-  const [avatar, setAvatar] = useState("");
+  const [skills, setSkills] = useState<string[]>([]);
+  const [newSkill, setNewSkill] = useState("");
+
+  const addSkill = () => {
+    if (newSkill.trim()) {
+      setSkills([...skills, newSkill.trim()]);
+      setNewSkill("");
+    }
+  };
+
+  const removeSkill = (index: number) => {
+    setSkills(skills.filter((_, i) => i !== index));
+  };
 
   const handleSave = () => {
     const newTeamMember = {
@@ -41,39 +44,38 @@ export function AddTeamMemberModal({
       email,
       phone,
       bio,
-      skills: skills.split(",").map((skill) => skill.trim()),
-      avatar:
-        avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+      skills,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
     };
-
+    
     if (onSave) {
       onSave(newTeamMember);
     }
-
-    // Reset form
-    setName("");
-    setRole("");
-    setEmail("");
-    setPhone("");
-    setBio("");
-    setSkills("");
-    setAvatar("");
-
+    
     if (onOpenChange) {
       onOpenChange(false);
     }
   };
 
+  if (!open) {
+    return null;
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Add Team Member</DialogTitle>
-          <DialogDescription>
-            Add a new team member to showcase in your proposals and on your
-            website.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-[600px] max-h-[90vh] overflow-y-auto p-6">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold">Add Team Member</h2>
+          <button 
+            onClick={() => onOpenChange && onOpenChange(false)}
+            className="text-gray-500 hover:text-gray-700"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="text-sm text-gray-500 mb-4">
+          Add a new team member to showcase on your agency profile.
+        </p>
         <div className="grid gap-4 py-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -82,11 +84,11 @@ export function AddTeamMemberModal({
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="John Doe"
+                placeholder="Sarah Johnson"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
+              <Label htmlFor="role">Role / Position</Label>
               <Input
                 id="role"
                 value={role}
@@ -95,6 +97,7 @@ export function AddTeamMemberModal({
               />
             </div>
           </div>
+          
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -103,7 +106,7 @@ export function AddTeamMemberModal({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="john@example.com"
+                placeholder="sarah@example.com"
               />
             </div>
             <div className="space-y-2">
@@ -116,39 +119,63 @@ export function AddTeamMemberModal({
               />
             </div>
           </div>
+          
           <div className="space-y-2">
             <Label htmlFor="bio">Bio</Label>
             <Textarea
               id="bio"
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Brief professional bio..."
-              rows={3}
+              placeholder="Over 10 years of experience in brand strategy and creative direction for Fortune 500 companies."
+              className="min-h-[100px]"
             />
           </div>
+          
           <div className="space-y-2">
-            <Label htmlFor="skills">Skills (comma-separated)</Label>
-            <Input
-              id="skills"
-              value={skills}
-              onChange={(e) => setSkills(e.target.value)}
-              placeholder="Brand Strategy, Creative Direction, Team Leadership"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="avatar">Avatar URL (optional)</Label>
-            <Input
-              id="avatar"
-              value={avatar}
-              onChange={(e) => setAvatar(e.target.value)}
-              placeholder="https://example.com/avatar.jpg"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Leave blank to generate an avatar automatically
-            </p>
+            <Label>Skills</Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {skills.map((skill, index) => (
+                <div
+                  key={index}
+                  className="flex items-center bg-blue-50 text-blue-700 px-2 py-1 rounded-md text-sm"
+                >
+                  {skill}
+                  <button
+                    type="button"
+                    onClick={() => removeSkill(index)}
+                    className="ml-1 text-blue-500 hover:text-blue-700"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newSkill}
+                onChange={(e) => setNewSkill(e.target.value)}
+                placeholder="Add skill (e.g., Brand Strategy)"
+                className="flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addSkill();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={addSkill}
+                size="sm"
+                className="flex items-center"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
+            </div>
           </div>
         </div>
-        <DialogFooter>
+        <div className="flex justify-end gap-2 mt-4">
           <Button
             variant="outline"
             onClick={() => onOpenChange && onOpenChange(false)}
@@ -156,8 +183,8 @@ export function AddTeamMemberModal({
             Cancel
           </Button>
           <Button onClick={handleSave}>Save Team Member</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </div>
+    </div>
   );
 }

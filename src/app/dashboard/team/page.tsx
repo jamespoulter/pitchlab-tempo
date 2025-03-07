@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -25,8 +28,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AddTeamMemberModal } from "@/components/modals/add-team-member-modal";
 
 export default function TeamPage() {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
   // This would normally fetch real data from the database
   const teamMembers = [
     {
@@ -104,7 +110,10 @@ export default function TeamPage() {
             Manage your agency's team and showcase their expertise.
           </p>
         </div>
-        <Button className="flex items-center gap-2">
+        <Button 
+          className="flex items-center gap-2"
+          onClick={() => setIsAddModalOpen(true)}
+        >
           <Plus className="h-4 w-4" />
           <span>Add Team Member</span>
         </Button>
@@ -305,6 +314,15 @@ export default function TeamPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AddTeamMemberModal
+        open={isAddModalOpen}
+        onOpenChange={setIsAddModalOpen}
+        onSave={(teamMember) => {
+          console.log("New team member:", teamMember);
+          // Here you would normally save the data to your database
+        }}
+      />
     </div>
   );
 }
