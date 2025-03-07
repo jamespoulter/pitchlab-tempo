@@ -20,7 +20,7 @@ import {
   FolderKanban,
   Users,
   MessageSquareQuote,
-  DragDropIcon,
+  GripVertical,
   Eye,
 } from "lucide-react";
 import Link from "next/link";
@@ -121,7 +121,7 @@ export default function NewProposalPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <DragDropIcon className="h-4 w-4" />
+                        <GripVertical className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -140,7 +140,7 @@ export default function NewProposalPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <DragDropIcon className="h-4 w-4" />
+                        <GripVertical className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -159,7 +159,7 @@ export default function NewProposalPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <DragDropIcon className="h-4 w-4" />
+                        <GripVertical className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -178,7 +178,7 @@ export default function NewProposalPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <DragDropIcon className="h-4 w-4" />
+                        <GripVertical className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
@@ -197,7 +197,7 @@ export default function NewProposalPage() {
                     </div>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <DragDropIcon className="h-4 w-4" />
+                        <GripVertical className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>

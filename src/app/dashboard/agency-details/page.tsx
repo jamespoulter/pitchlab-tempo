@@ -218,7 +218,7 @@ export default function AgencyDetailsPage() {
                       className="flex items-center gap-3 p-3 border rounded-md"
                     >
                       <div className="bg-blue-50 p-2 rounded-md">
-                        <getSocialIcon platform={platform} />
+                        <Globe className="h-4 w-4 text-blue-600" />
                       </div>
                       <div>
                         <p className="text-sm font-medium capitalize">
@@ -455,7 +455,4 @@ export default function AgencyDetailsPage() {
   );
 }
 
-function getSocialIcon({ platform }: { platform: string }) {
-  // This would normally use proper social media icons
-  return <Globe className="h-4 w-4 text-blue-600" />;
-}
+// Social media icons would be implemented here in a real application
