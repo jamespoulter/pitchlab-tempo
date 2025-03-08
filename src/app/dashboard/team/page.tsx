@@ -29,9 +29,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddTeamMemberModal } from "@/components/modals/add-team-member-modal";
+import { useRouter } from "next/navigation";
 
 export default function TeamPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const router = useRouter();
 
   // This would normally fetch real data from the database
   const teamMembers = [
@@ -101,6 +103,14 @@ export default function TeamPage() {
     },
   ];
 
+  const handleViewTeamMember = (id: number) => {
+    router.push(`/dashboard/team/${id}`);
+  };
+
+  const handleEditTeamMember = (id: number) => {
+    router.push(`/dashboard/team/${id}?edit=true`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
@@ -153,14 +163,22 @@ export default function TeamPage() {
                 className="border rounded-lg overflow-hidden group hover:shadow-md transition-all"
               >
                 <div className="p-6 flex flex-col items-center text-center">
-                  <div className="w-24 h-24 rounded-full overflow-hidden mb-4">
+                  <div 
+                    className="w-24 h-24 rounded-full overflow-hidden mb-4 cursor-pointer"
+                    onClick={() => handleViewTeamMember(member.id)}
+                  >
                     <img
                       src={member.avatar}
                       alt={member.name}
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  <h3 className="font-semibold text-lg">{member.name}</h3>
+                  <h3 
+                    className="font-semibold text-lg cursor-pointer hover:text-blue-600"
+                    onClick={() => handleViewTeamMember(member.id)}
+                  >
+                    {member.name}
+                  </h3>
                   <p className="text-blue-600 font-medium text-sm mb-3">
                     {member.role}
                   </p>
@@ -189,9 +207,13 @@ export default function TeamPage() {
                   </div>
                 </div>
                 <div className="border-t p-3 flex justify-between items-center bg-gray-50">
-                  <Button variant="outline" size="sm">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleViewTeamMember(member.id)}
+                  >
                     <Users className="h-3.5 w-3.5 mr-1" />
-                    Add to Proposal
+                    View Profile
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -200,11 +222,11 @@ export default function TeamPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditTeamMember(member.id)}>
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleViewTeamMember(member.id)}>
                         <ExternalLink className="h-4 w-4 mr-2" />
                         View Profile
                       </DropdownMenuItem>
@@ -226,7 +248,10 @@ export default function TeamPage() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Showcase your agency's talent
                 </p>
-                <Button size="sm">
+                <Button 
+                  size="sm"
+                  onClick={() => setIsAddModalOpen(true)}
+                >
                   <Plus className="h-4 w-4 mr-1" />
                   Add Team Member
                 </Button>
@@ -298,7 +323,11 @@ export default function TeamPage() {
                           </p>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditTeamMember(member.id)}
+                      >
                         <Edit className="h-3.5 w-3.5 mr-1" />
                         Edit Role
                       </Button>

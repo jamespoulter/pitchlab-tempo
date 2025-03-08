@@ -20,6 +20,7 @@ import {
   DollarSign,
   Clock,
   CheckCircle,
+  Eye,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,9 +29,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddServiceModal } from "@/components/modals/add-service-modal";
+import { useRouter } from "next/navigation";
 
 export default function ServicesPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const router = useRouter();
 
   // This would normally fetch real data from the database
   const services = [
@@ -132,6 +135,14 @@ export default function ServicesPage() {
     },
   ];
 
+  const handleViewService = (id: number) => {
+    router.push(`/dashboard/services/${id}`);
+  };
+
+  const handleEditService = (id: number) => {
+    router.push(`/dashboard/services/${id}?edit=true`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
@@ -184,7 +195,10 @@ export default function ServicesPage() {
                 key={service.id}
                 className="border rounded-lg overflow-hidden group hover:shadow-md transition-all"
               >
-                <div className="p-6">
+                <div 
+                  className="p-6 cursor-pointer"
+                  onClick={() => handleViewService(service.id)}
+                >
                   <div className="flex items-center justify-between mb-4">
                     <div className="text-3xl">{service.icon}</div>
                     <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
@@ -218,9 +232,13 @@ export default function ServicesPage() {
                   </div>
                 </div>
                 <div className="border-t p-3 flex justify-between items-center bg-gray-50">
-                  <Button variant="outline" size="sm">
-                    <Briefcase className="h-3.5 w-3.5 mr-1" />
-                    Add to Proposal
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleViewService(service.id)}
+                  >
+                    <Eye className="h-3.5 w-3.5 mr-1" />
+                    View Details
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -229,7 +247,7 @@ export default function ServicesPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => handleEditService(service.id)}>
                         <Edit className="h-4 w-4 mr-2" />
                         Edit
                       </DropdownMenuItem>
@@ -251,7 +269,10 @@ export default function ServicesPage() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Showcase your agency's offerings
                 </p>
-                <Button size="sm">
+                <Button 
+                  size="sm"
+                  onClick={() => setIsAddModalOpen(true)}
+                >
                   <Plus className="h-4 w-4 mr-1" />
                   Add Service
                 </Button>

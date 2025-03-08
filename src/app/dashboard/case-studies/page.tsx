@@ -17,6 +17,10 @@ import {
   MoreHorizontal,
   ArrowUpRight,
   Calendar,
+  Edit,
+  Copy,
+  Trash,
+  Eye,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,9 +29,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddCaseStudyModal } from "@/components/modals/add-case-study-modal";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function CaseStudiesPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const router = useRouter();
   
   // This would normally fetch real data from the database
   const caseStudies = [
@@ -93,6 +100,14 @@ export default function CaseStudiesPage() {
     },
   ];
 
+  const handleViewCaseStudy = (id: number) => {
+    router.push(`/dashboard/case-studies/${id}`);
+  };
+
+  const handleEditCaseStudy = (id: number) => {
+    router.push(`/dashboard/case-studies/${id}?edit=true`);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
@@ -152,7 +167,12 @@ export default function CaseStudiesPage() {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                    <Button variant="secondary" size="sm" className="gap-1">
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      className="gap-1"
+                      onClick={() => handleViewCaseStudy(caseStudy.id)}
+                    >
                       <span>View Details</span>
                       <ArrowUpRight className="h-3 w-3" />
                     </Button>
@@ -174,9 +194,22 @@ export default function CaseStudiesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>Edit</DropdownMenuItem>
-                        <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                        <DropdownMenuItem>Delete</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewCaseStudy(caseStudy.id)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEditCaseStudy(caseStudy.id)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Duplicate
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Trash className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -216,7 +249,10 @@ export default function CaseStudiesPage() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Showcase your agency's work
                 </p>
-                <Button size="sm">
+                <Button 
+                  size="sm"
+                  onClick={() => setIsAddModalOpen(true)}
+                >
                   <Plus className="h-4 w-4 mr-1" />
                   Add Case Study
                 </Button>

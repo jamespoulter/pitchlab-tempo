@@ -426,3 +426,29 @@ export default function ProposalPreviewPage() {
                     );
 
                   case "caseStudies":
+                    return (
+                      <div key={contentIndex} className="mb-8">
+                        {content.items && content.items.map((study, studyIndex) => (
+                          <div key={studyIndex} className="border rounded-lg p-6 mb-4">
+                            <h3 className="text-xl font-semibold mb-2">{study.title}</h3>
+                            <p className="text-gray-600 mb-4">{study.description}</p>
+                            <div className="flex items-center text-sm text-gray-500">
+                              <Building className="h-4 w-4 mr-1" />
+                              <span>{study.client}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                    
+                  default:
+                    return null;
+                }
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -31,8 +31,8 @@ export default function PricingCard({ item, user }: {
         : [];
 
     // Format currency amount
-    const formatAmount = (amount: number, currency: string = 'USD') => {
-        return new Intl.NumberFormat('en-US', {
+    const formatAmount = (amount: number, currency: string = 'GBP') => {
+        return new Intl.NumberFormat('en-GB', {
             style: 'currency',
             currency: currency,
             minimumFractionDigits: 0,
@@ -53,7 +53,7 @@ export default function PricingCard({ item, user }: {
             // Get trial period days from metadata if available
             const trialPeriodDays = item.product?.metadata?.trial_period_days || null;
             
-            const { data, error } = await supabase.functions.invoke('supabase-functions-create-checkout', {
+            const { data, error } = await supabase.functions.invoke('create-checkout', {
                 body: {
                     price_id: priceId,
                     user_id: user.id,
@@ -96,7 +96,7 @@ export default function PricingCard({ item, user }: {
                 )}
                 <CardTitle className="text-2xl font-bold tracking-tight text-gray-900">{item.product?.name || item.name}</CardTitle>
                 <CardDescription className="flex items-baseline gap-2 mt-2">
-                    <span className="text-4xl font-bold text-gray-900">{formatAmount(item.amount)}</span>
+                    <span className="text-4xl font-bold text-gray-900">{formatAmount(item.amount, item.currency)}</span>
                     <span className="text-gray-600">/{item.interval}</span>
                 </CardDescription>
                 {item.product?.metadata?.description && (

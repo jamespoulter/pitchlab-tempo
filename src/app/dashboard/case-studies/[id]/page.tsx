@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -16,12 +19,22 @@ import {
   Download,
   ArrowUpRight,
   CheckCircle,
+  Save,
+  X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function CaseStudyPage({ params }: { params: { id: string } }) {
-  // This would normally fetch real data from the database based on the ID
-  const caseStudy = {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const isEditMode = searchParams.get("edit") === "true";
+  
+  // State for the case study data
+  const [caseStudy, setCaseStudy] = useState({
     id: params.id,
     title: "E-commerce Redesign Boosts Conversion by 45%",
     client: "Fashion Retailer",
@@ -33,271 +46,553 @@ export default function CaseStudyPage({ params }: { params: { id: string } }) {
     challenge:
       "The client, a well-established fashion retailer, was experiencing a high cart abandonment rate of 78% and a conversion rate of only 1.2% on their e-commerce platform. Their existing website had an outdated design, slow loading times, and a complicated checkout process that frustrated users. Mobile users, who accounted for 65% of their traffic, had an even worse experience with a non-responsive design.",
     solution:
-      "Our team conducted extensive user research and competitive analysis to identify pain points in the customer journey. We redesigned the entire e-commerce experience with a focus on mobile-first design, simplified navigation, and an optimized checkout process. Key improvements included:
-      
-      1. Streamlined product categorization and filtering
-      2. Enhanced product pages with better imagery and clearer information
-      3. Simplified 3-step checkout process
-      4. Improved site performance with 40% faster loading times
-      5. Personalized product recommendations
-      6. Responsive design optimized for all devices",
+      "Our team conducted extensive user research and competitive analysis to identify pain points in the customer journey. We redesigned the entire e-commerce experience with a focus on mobile-first design, simplified navigation, and an optimized checkout process. Key improvements included:\n\n1. Streamlined product categorization and filtering\n2. Enhanced product pages with better imagery and clearer information\n3. Simplified 3-step checkout process\n4. Improved site performance with 40% faster loading times\n5. Personalized product recommendations\n6. Responsive design optimized for all devices",
     results:
-      "Within three months of launching the redesigned e-commerce platform, the client experienced:
-      
-      • 45% increase in conversion rate (from 1.2% to 1.74%)
-      • 32% reduction in cart abandonment
-      • 28% increase in average order value
-      • 52% increase in mobile conversions
-      • 22% increase in time spent on site
-      • 18% increase in returning customers
-      
-      The improvements resulted in an estimated $1.2 million in additional annual revenue.",
+      "Within three months of launching the redesigned e-commerce platform, the client experienced:\n\n• 45% increase in conversion rate (from 1.2% to 1.74%)\n• 32% reduction in cart abandonment\n• 28% increase in average order value\n• 52% increase in mobile conversions\n• 18% increase in time spent on site\n• 40% decrease in page load time",
     testimonial: {
       quote:
-        "The redesign completely transformed our online business. The team's strategic approach to understanding our customers' needs and translating that into an intuitive shopping experience has had a tremendous impact on our bottom line.",
-      author: "Jane Smith",
-      title: "E-commerce Director",
+        "The redesign completely transformed our online business. Not only did we see immediate improvements in our conversion rates, but the enhanced user experience has led to increased customer satisfaction and loyalty.",
+      author: "Sarah Johnson",
+      title: "E-commerce Director, Fashion Retailer",
     },
-    team: ["Sarah Johnson", "Michael Chen", "David Kim"],
-    duration: "12 weeks",
-    tools: ["Figma", "React", "Shopify", "Google Analytics", "Hotjar"],
-    images: [
-      "https://images.unsplash.com/photo-1523381294911-8d3cead13475?w=800&q=80",
-      "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800&q=80",
-      "https://images.unsplash.com/photo-1546054454-aa26e2b734c7?w=800&q=80",
+    keyMetrics: [
+      { label: "Conversion Rate Increase", value: "45%" },
+      { label: "Cart Abandonment Reduction", value: "32%" },
+      { label: "Mobile Conversion Increase", value: "52%" },
+      { label: "Page Load Time Decrease", value: "40%" },
     ],
+    teamMembers: [
+      "Lead UX Designer: Alex Chen",
+      "UI Designer: Maria Rodriguez",
+      "Frontend Developer: James Wilson",
+      "Backend Developer: Priya Patel",
+      "Project Manager: David Kim",
+    ],
+    technologies: [
+      "React",
+      "Node.js",
+      "MongoDB",
+      "AWS",
+      "Figma",
+      "Google Analytics",
+      "Hotjar",
+    ],
+    timeline: "12 weeks (June - September 2023)",
+  });
+  
+  // State for new tag input
+  const [newTag, setNewTag] = useState("");
+  
+  const handleSave = () => {
+    // Here you would normally save the data to your database
+    console.log("Saving case study:", caseStudy);
+    alert("Case study saved successfully!");
+    
+    // Exit edit mode
+    router.push(`/dashboard/case-studies/${params.id}`);
+  };
+  
+  const handleAddTag = () => {
+    if (newTag.trim()) {
+      setCaseStudy({
+        ...caseStudy,
+        tags: [...caseStudy.tags, newTag.trim()],
+      });
+      setNewTag("");
+    }
+  };
+  
+  const handleRemoveTag = (index: number) => {
+    setCaseStudy({
+      ...caseStudy,
+      tags: caseStudy.tags.filter((_, i) => i !== index),
+    });
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Link href="/dashboard/case-studies">
-          <Button variant="ghost" size="sm" className="gap-1">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Case Studies</span>
-          </Button>
-        </Link>
+      <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1">
-            <Edit className="h-4 w-4" />
-            <span>Edit</span>
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1">
-            <Share className="h-4 w-4" />
-            <span>Share</span>
-          </Button>
-          <Button size="sm" className="gap-1">
-            <FileText className="h-4 w-4" />
-            <span>Add to Proposal</span>
-          </Button>
+          <Link href="/dashboard/case-studies">
+            <Button variant="outline" size="icon" className="h-9 w-9">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+          <div>
+            {isEditMode ? (
+              <Input
+                value={caseStudy.title}
+                onChange={(e) => setCaseStudy({ ...caseStudy, title: e.target.value })}
+                className="text-2xl font-bold h-auto py-1 px-2"
+              />
+            ) : (
+              <h1 className="text-3xl font-bold tracking-tight">{caseStudy.title}</h1>
+            )}
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-muted-foreground">Client:</span>
+              {isEditMode ? (
+                <Input
+                  value={caseStudy.client}
+                  onChange={(e) => setCaseStudy({ ...caseStudy, client: e.target.value })}
+                  className="h-7 py-1 px-2"
+                />
+              ) : (
+                <span>{caseStudy.client}</span>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {isEditMode ? (
+            <>
+              <Button variant="outline" onClick={() => router.push(`/dashboard/case-studies/${params.id}`)}>
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              <Button onClick={handleSave}>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" className="gap-1">
+                <Share className="h-4 w-4" />
+                <span>Share</span>
+              </Button>
+              <Button variant="outline" className="gap-1">
+                <Download className="h-4 w-4" />
+                <span>Download</span>
+              </Button>
+              <Button 
+                className="gap-1"
+                onClick={() => router.push(`/dashboard/case-studies/${params.id}?edit=true`)}
+              >
+                <Edit className="h-4 w-4" />
+                <span>Edit</span>
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <Card className="overflow-hidden">
-            <div className="aspect-video w-full overflow-hidden">
-              <img
-                src={caseStudy.image}
-                alt={caseStudy.title}
-                className="w-full h-full object-cover"
-              />
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <div className="aspect-[21/9] w-full overflow-hidden">
+              {isEditMode ? (
+                <div className="p-4 space-y-2">
+                  <Label htmlFor="image">Image URL</Label>
+                  <Input
+                    id="image"
+                    value={caseStudy.image}
+                    onChange={(e) => setCaseStudy({ ...caseStudy, image: e.target.value })}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                </div>
+              ) : (
+                <img
+                  src={caseStudy.image}
+                  alt={caseStudy.title}
+                  className="w-full h-full object-cover"
+                />
+              )}
             </div>
-            <CardHeader>
-              <div className="flex items-center justify-between">
+            <CardContent className="pt-6">
+              <div className="space-y-6">
                 <div>
-                  <CardTitle className="text-2xl">{caseStudy.title}</CardTitle>
-                  <CardDescription className="mt-2">
-                    <div className="flex items-center gap-2">
-                      <Building className="h-4 w-4" />
-                      <span>
-                        {caseStudy.client} • {caseStudy.industry}
-                      </span>
-                    </div>
-                  </CardDescription>
+                  <h2 className="text-xl font-semibold mb-3">Challenge</h2>
+                  {isEditMode ? (
+                    <Textarea
+                      value={caseStudy.challenge}
+                      onChange={(e) => setCaseStudy({ ...caseStudy, challenge: e.target.value })}
+                      className="min-h-[150px]"
+                    />
+                  ) : (
+                    <p className="text-gray-700 whitespace-pre-line">{caseStudy.challenge}</p>
+                  )}
                 </div>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4 mr-1" />
-                  {new Date(caseStudy.date).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                
+                <div>
+                  <h2 className="text-xl font-semibold mb-3">Solution</h2>
+                  {isEditMode ? (
+                    <Textarea
+                      value={caseStudy.solution}
+                      onChange={(e) => setCaseStudy({ ...caseStudy, solution: e.target.value })}
+                      className="min-h-[200px]"
+                    />
+                  ) : (
+                    <p className="text-gray-700 whitespace-pre-line">{caseStudy.solution}</p>
+                  )}
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-2 mt-4">
-                {caseStudy.tags.map((tag, index) => (
-                  <span
-                    key={index}
-                    className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Challenge</h3>
-                <p className="whitespace-pre-line">{caseStudy.challenge}</p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Solution</h3>
-                <p className="whitespace-pre-line">{caseStudy.solution}</p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Results</h3>
-                <p className="whitespace-pre-line">{caseStudy.results}</p>
-              </div>
-
-              <div className="border-t pt-6">
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-                  <p className="italic text-gray-700 mb-3">
-                    "{caseStudy.testimonial.quote}"
-                  </p>
-                  <p className="font-medium">
-                    {caseStudy.testimonial.author},{" "}
-                    <span className="font-normal text-gray-600">
-                      {caseStudy.testimonial.title}
-                    </span>
-                  </p>
+                
+                <div>
+                  <h2 className="text-xl font-semibold mb-3">Results</h2>
+                  {isEditMode ? (
+                    <Textarea
+                      value={caseStudy.results}
+                      onChange={(e) => setCaseStudy({ ...caseStudy, results: e.target.value })}
+                      className="min-h-[200px]"
+                    />
+                  ) : (
+                    <p className="text-gray-700 whitespace-pre-line">{caseStudy.results}</p>
+                  )}
                 </div>
-              </div>
-
-              <div className="border-t pt-6">
-                <h3 className="text-lg font-semibold mb-4">Project Gallery</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {caseStudy.images.map((image, index) => (
-                    <div
-                      key={index}
-                      className="aspect-video rounded-md overflow-hidden border"
-                    >
-                      <img
-                        src={image}
-                        alt={`Project image ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
+                
+                <div>
+                  <h2 className="text-xl font-semibold mb-3">Testimonial</h2>
+                  <div className="bg-blue-50 p-6 rounded-lg border border-blue-100">
+                    {isEditMode ? (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="testimonialQuote">Quote</Label>
+                          <Textarea
+                            id="testimonialQuote"
+                            value={caseStudy.testimonial.quote}
+                            onChange={(e) => setCaseStudy({
+                              ...caseStudy,
+                              testimonial: {
+                                ...caseStudy.testimonial,
+                                quote: e.target.value
+                              }
+                            })}
+                            className="min-h-[100px]"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="testimonialAuthor">Author</Label>
+                          <Input
+                            id="testimonialAuthor"
+                            value={caseStudy.testimonial.author}
+                            onChange={(e) => setCaseStudy({
+                              ...caseStudy,
+                              testimonial: {
+                                ...caseStudy.testimonial,
+                                author: e.target.value
+                              }
+                            })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="testimonialTitle">Title</Label>
+                          <Input
+                            id="testimonialTitle"
+                            value={caseStudy.testimonial.title}
+                            onChange={(e) => setCaseStudy({
+                              ...caseStudy,
+                              testimonial: {
+                                ...caseStudy.testimonial,
+                                title: e.target.value
+                              }
+                            })}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-lg italic text-blue-800 mb-4">
+                          "{caseStudy.testimonial.quote}"
+                        </p>
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-blue-700 font-bold">
+                            {caseStudy.testimonial.author.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="font-medium">{caseStudy.testimonial.author}</p>
+                            <p className="text-sm text-blue-700">
+                              {caseStudy.testimonial.title}
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
-
-        <div className="md:col-span-1 space-y-6">
+        
+        <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Project Details</CardTitle>
+              <CardTitle>Case Study Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                  Client
-                </h4>
-                <p>{caseStudy.client}</p>
-              </div>
-              <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
                   Industry
-                </h4>
-                <p>{caseStudy.industry}</p>
+                </h3>
+                {isEditMode ? (
+                  <Input
+                    value={caseStudy.industry}
+                    onChange={(e) => setCaseStudy({ ...caseStudy, industry: e.target.value })}
+                  />
+                ) : (
+                  <p className="font-medium">{caseStudy.industry}</p>
+                )}
               </div>
+              
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                  Duration
-                </h4>
-                <p>{caseStudy.duration}</p>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  Date
+                </h3>
+                {isEditMode ? (
+                  <Input
+                    type="date"
+                    value={caseStudy.date}
+                    onChange={(e) => setCaseStudy({ ...caseStudy, date: e.target.value })}
+                  />
+                ) : (
+                  <p className="font-medium">
+                    {new Date(caseStudy.date).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                )}
               </div>
+              
               <div>
-                <h4 className="text-sm font-medium text-muted-foreground mb-1">
-                  Completion Date
-                </h4>
-                <p>
-                  {new Date(caseStudy.date).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Project Team</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {caseStudy.team.map((member, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-medium">
-                      {member.split(" ").map((n) => n[0]).join("")}
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  Tags
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {caseStudy.tags.map((tag, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center bg-gray-100 rounded-full px-3 py-1 text-sm"
+                    >
+                      <span>{tag}</span>
+                      {isEditMode && (
+                        <button
+                          onClick={() => handleRemoveTag(index)}
+                          className="ml-2 text-gray-500 hover:text-gray-700"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      )}
                     </div>
-                    <span>{member}</span>
-                  </div>
-                ))}
+                  ))}
+                  {isEditMode && (
+                    <div className="flex items-center gap-2 w-full mt-2">
+                      <Input
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        placeholder="Add tag"
+                        className="flex-1"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddTag();
+                          }
+                        }}
+                      />
+                      <Button
+                        size="sm"
+                        onClick={handleAddTag}
+                        disabled={!newTag.trim()}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  Key Metrics
+                </h3>
+                <div className="space-y-3">
+                  {caseStudy.keyMetrics.map((metric, index) => (
+                    <div key={index} className="flex justify-between items-center">
+                      {isEditMode ? (
+                        <>
+                          <Input
+                            value={metric.label}
+                            onChange={(e) => {
+                              const updatedMetrics = [...caseStudy.keyMetrics];
+                              updatedMetrics[index].label = e.target.value;
+                              setCaseStudy({
+                                ...caseStudy,
+                                keyMetrics: updatedMetrics,
+                              });
+                            }}
+                            className="w-2/3 mr-2"
+                          />
+                          <Input
+                            value={metric.value}
+                            onChange={(e) => {
+                              const updatedMetrics = [...caseStudy.keyMetrics];
+                              updatedMetrics[index].value = e.target.value;
+                              setCaseStudy({
+                                ...caseStudy,
+                                keyMetrics: updatedMetrics,
+                              });
+                            }}
+                            className="w-1/3"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <span>{metric.label}</span>
+                          <span className="font-bold text-blue-600">{metric.value}</span>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  {isEditMode && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-2"
+                      onClick={() => {
+                        setCaseStudy({
+                          ...caseStudy,
+                          keyMetrics: [
+                            ...caseStudy.keyMetrics,
+                            { label: "New Metric", value: "0%" },
+                          ],
+                        });
+                      }}
+                    >
+                      Add Metric
+                    </Button>
+                  )}
+                </div>
+              </div>
+              
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  Timeline
+                </h3>
+                {isEditMode ? (
+                  <Input
+                    value={caseStudy.timeline}
+                    onChange={(e) => setCaseStudy({ ...caseStudy, timeline: e.target.value })}
+                  />
+                ) : (
+                  <p className="font-medium">{caseStudy.timeline}</p>
+                )}
               </div>
             </CardContent>
           </Card>
-
+          
           <Card>
             <CardHeader>
-              <CardTitle>Tools & Technologies</CardTitle>
+              <CardTitle>Team & Technologies</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {caseStudy.tools.map((tool, index) => (
-                  <span
-                    key={index}
-                    className="text-sm px-3 py-1 bg-gray-100 rounded-full"
-                  >
-                    {tool}
-                  </span>
-                ))}
+            <CardContent className="space-y-6">
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  Team Members
+                </h3>
+                <ul className="space-y-1">
+                  {caseStudy.teamMembers.map((member, index) => (
+                    <li key={index} className="flex items-center">
+                      {isEditMode ? (
+                        <Input
+                          value={member}
+                          onChange={(e) => {
+                            const updatedMembers = [...caseStudy.teamMembers];
+                            updatedMembers[index] = e.target.value;
+                            setCaseStudy({
+                              ...caseStudy,
+                              teamMembers: updatedMembers,
+                            });
+                          }}
+                          className="mb-2"
+                        />
+                      ) : (
+                        <>
+                          <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+                          <span>{member}</span>
+                        </>
+                      )}
+                    </li>
+                  ))}
+                  {isEditMode && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full mt-2"
+                      onClick={() => {
+                        setCaseStudy({
+                          ...caseStudy,
+                          teamMembers: [
+                            ...caseStudy.teamMembers,
+                            "New Team Member",
+                          ],
+                        });
+                      }}
+                    >
+                      Add Team Member
+                    </Button>
+                  )}
+                </ul>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Key Results</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {[
-                  "45% increase in conversion rate",
-                  "32% reduction in cart abandonment",
-                  "28% increase in average order value",
-                  "$1.2M additional annual revenue",
-                ].map((result, index) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
-                    <span>{result}</span>
-                  </div>
-                ))}
+              
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground mb-2">
+                  Technologies Used
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {caseStudy.technologies.map((tech, index) => (
+                    <div
+                      key={index}
+                      className="bg-gray-100 rounded-full px-3 py-1 text-sm"
+                    >
+                      {isEditMode ? (
+                        <div className="flex items-center">
+                          <Input
+                            value={tech}
+                            onChange={(e) => {
+                              const updatedTech = [...caseStudy.technologies];
+                              updatedTech[index] = e.target.value;
+                              setCaseStudy({
+                                ...caseStudy,
+                                technologies: updatedTech,
+                              });
+                            }}
+                            className="w-24 h-6 py-0 px-1 mr-1"
+                          />
+                          <button
+                            onClick={() => {
+                              setCaseStudy({
+                                ...caseStudy,
+                                technologies: caseStudy.technologies.filter(
+                                  (_, i) => i !== index
+                                ),
+                              });
+                            }}
+                            className="text-gray-500 hover:text-gray-700"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <span>{tech}</span>
+                      )}
+                    </div>
+                  ))}
+                  {isEditMode && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setCaseStudy({
+                          ...caseStudy,
+                          technologies: [...caseStudy.technologies, "New Tech"],
+                        });
+                      }}
+                    >
+                      Add Tech
+                    </Button>
+                  )}
+                </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full justify-start">
-                <FileText className="h-4 w-4 mr-2" />
-                <span>Add to Proposal</span>
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Download className="h-4 w-4 mr-2" />
-                <span>Download PDF</span>
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <ArrowUpRight className="h-4 w-4 mr-2" />
-                <span>View Live Project</span>
-              </Button>
             </CardContent>
           </Card>
         </div>

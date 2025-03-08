@@ -58,7 +58,15 @@ export default async function Pricing() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { data: plans, error } = await supabase.functions.invoke('supabase-functions-get-plans');
+    // Use the new function name and get all plans
+    const { data: allPlans, error } = await supabase.functions.invoke('get-plans');
+    
+    // Filter to only show the Pitchhub Premium product
+    // You can modify this filter if you want to show multiple plans
+    const plans = allPlans?.filter((plan: Plan) => 
+        plan.product?.name === "Pitchhub Premium" || 
+        plan.id === "price_1R0QA2I7Diy7LoDft8J57jK3"
+    );
     
     // Extract common features for the comparison table
     const commonFeatures = plans ? extractCommonFeatures(plans as Plan[]) : [];

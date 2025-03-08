@@ -11,8 +11,14 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const { data: plans, error } = await supabase.functions.invoke(
-    "supabase-functions-get-plans",
+  const { data: allPlans, error } = await supabase.functions.invoke(
+    "get-plans",
+  );
+  
+  // Filter to only show the Pitchhub Premium product
+  const plans = allPlans?.filter((plan: any) => 
+    plan.product?.name === "Pitchhub Premium" || 
+    plan.id === "price_1R0QA2I7Diy7LoDft8J57jK3"
   );
 
   return (
