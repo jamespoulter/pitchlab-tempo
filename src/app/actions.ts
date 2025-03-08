@@ -238,3 +238,185 @@ export const checkUserSubscription = async (userId: string) => {
     };
   }
 };
+
+export const updateProfileAction = async (formData: FormData) => {
+  const supabase = await createClient();
+  
+  const fullName = formData.get("full_name")?.toString() || '';
+  const bio = formData.get("bio")?.toString() || '';
+  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return encodedRedirect(
+      "error",
+      "/dashboard/settings",
+      "User not authenticated"
+    );
+  }
+  
+  // Update user metadata in auth
+  const { error: authError } = await supabase.auth.updateUser({
+    data: {
+      full_name: fullName,
+      bio: bio,
+    },
+  });
+  
+  if (authError) {
+    return encodedRedirect(
+      "error",
+      "/dashboard/settings",
+      `Failed to update profile: ${authError.message}`
+    );
+  }
+  
+  // Also update the users table if it exists
+  try {
+    const { error: dbError } = await supabase
+      .from('users')
+      .update({
+        name: fullName,
+        bio: bio,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', user.id);
+    
+    if (dbError && dbError.code !== 'PGRST116') { // Ignore if no rows updated
+      console.error("Error updating user in database:", dbError);
+    }
+  } catch (err) {
+    console.error("Error updating user in database:", err);
+  }
+  
+  return encodedRedirect(
+    "success",
+    "/dashboard/settings",
+    "Profile updated successfully"
+  );
+};
+
+export const updatePasswordAction = async (formData: FormData) => {
+  const supabase = await createClient();
+  
+  const currentPassword = formData.get("current_password")?.toString();
+  const newPassword = formData.get("new_password")?.toString();
+  const confirmPassword = formData.get("confirm_password")?.toString();
+  
+  if (!currentPassword || !newPassword || !confirmPassword) {
+    return encodedRedirect(
+      "error",
+      "/dashboard/settings",
+      "All password fields are required"
+    );
+  }
+  
+  if (newPassword !== confirmPassword) {
+    return encodedRedirect(
+      "error",
+      "/dashboard/settings",
+      "New passwords do not match"
+    );
+  }
+  
+  // First verify the current password by attempting to sign in
+  const { data: { user }, error: signInError } = await supabase.auth.getUser();
+  
+  if (signInError || !user?.email) {
+    return encodedRedirect(
+      "error",
+      "/dashboard/settings",
+      "Authentication error"
+    );
+  }
+  
+  // Verify current password
+  const { error: verifyError } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+  
+  if (verifyError) {
+    return encodedRedirect(
+      "error",
+      "/dashboard/settings",
+      "Current password is incorrect"
+    );
+  }
+  
+  // Update the password
+  const { error: updateError } = await supabase.auth.updateUser({
+    password: newPassword,
+  });
+  
+  if (updateError) {
+    return encodedRedirect(
+      "error",
+      "/dashboard/settings",
+      `Failed to update password: ${updateError.message}`
+    );
+  }
+  
+  return encodedRedirect(
+    "success",
+    "/dashboard/settings",
+    "Password updated successfully"
+  );
+};
+
+export const deleteAccountAction = async (formData: FormData) => {
+  const supabase = await createClient();
+  const confirmation = formData.get("confirmation")?.toString();
+  
+  if (confirmation !== "DELETE") {
+    return encodedRedirect(
+      "error",
+      "/dashboard/settings",
+      "Please type DELETE to confirm account deletion"
+    );
+  }
+  
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  
+  if (!user) {
+    return encodedRedirect(
+      "error",
+      "/dashboard/settings",
+      "User not authenticated"
+    );
+  }
+  
+  // First delete user data from database tables
+  try {
+    // Delete from subscriptions table if exists
+    await supabase
+      .from('subscriptions')
+      .delete()
+      .eq('user_id', user.id);
+      
+    // Delete from users table if exists
+    await supabase
+      .from('users')
+      .delete()
+      .eq('id', user.id);
+      
+    // Add more tables as needed
+  } catch (err) {
+    console.error("Error deleting user data:", err);
+  }
+  
+  // Sign out the user
+  await supabase.auth.signOut();
+  
+  // Note: Supabase doesn't have a direct API to delete users
+  // In a real app, you would either:
+  // 1. Use admin API with service role to delete the user
+  // 2. Mark the user as deleted in your database
+  // 3. Send a request to your backend to handle the deletion
+  
+  return redirect("/sign-in?deleted=true");
+};

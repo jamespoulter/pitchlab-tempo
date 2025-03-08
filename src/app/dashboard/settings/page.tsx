@@ -4,6 +4,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,11 +30,24 @@ import {
   UserPlus,
   Trash,
   Check,
+  Sparkles,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
-import { createClient } from "../../../supabase/server";
+import { createClient } from "../../../../supabase/server";
 import { redirect } from "next/navigation";
+import { updateProfileAction, updatePasswordAction, deleteAccountAction, signOutAction } from "@/app/actions";
+import { checkUserSubscription } from "@/app/actions";
+import { FormMessage, Message } from "@/components/form-message";
+import { SubmitButton } from "@/components/submit-button";
+import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-export default async function SettingsPage() {
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: { message?: string; type?: string };
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -43,31 +57,56 @@ export default async function SettingsPage() {
     return redirect("/sign-in");
   }
 
+  // Get subscription information
+  const subscriptionInfo = await checkUserSubscription(user.id);
+  
+  // Format date for display
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "N/A";
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  // Get user profile data from the users table
+  const { data: userProfile } = await supabase
+    .from("users")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+  // Message from form submission
+  const message = searchParams.message;
+  const type = searchParams.type;
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
         <p className="text-muted-foreground mt-1">
-          Manage your account settings and preferences.
+          Manage your account settings and subscription.
         </p>
       </div>
 
+      {message && (
+        <Alert variant={type === "error" ? "destructive" : "default"}>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>{type === "error" ? "Error" : "Success"}</AlertTitle>
+          <AlertDescription>{message}</AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 lg:w-auto">
+        <TabsList className="grid w-full grid-cols-4 lg:w-auto">
           <TabsTrigger value="profile" className="flex items-center gap-2">
             <User className="h-4 w-4" />
             <span>Profile</span>
           </TabsTrigger>
-          <TabsTrigger value="billing" className="flex items-center gap-2">
+          <TabsTrigger value="subscription" className="flex items-center gap-2">
             <CreditCard className="h-4 w-4" />
-            <span>Billing</span>
-          </TabsTrigger>
-          <TabsTrigger
-            value="notifications"
-            className="flex items-center gap-2"
-          >
-            <Bell className="h-4 w-4" />
-            <span>Notifications</span>
+            <span>Subscription</span>
           </TabsTrigger>
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Lock className="h-4 w-4" />
@@ -87,134 +126,85 @@ export default async function SettingsPage() {
                 Update your personal information and profile settings.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="full-name">Full Name</Label>
-                    <Input
-                      id="full-name"
-                      defaultValue={user?.user_metadata?.full_name || ""}
-                      placeholder="John Doe"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      defaultValue={user?.email || ""}
-                      placeholder="john@example.com"
-                      disabled
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
-                  <textarea
-                    id="bio"
-                    className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                    placeholder="Tell us a bit about yourself..."
-                  ></textarea>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="profile-image">Profile Image</Label>
-                  <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
-                      {user?.user_metadata?.avatar_url ? (
-                        <img
-                          src={user.user_metadata.avatar_url}
-                          alt="Profile"
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <User className="h-8 w-8 text-gray-400" />
-                      )}
+            <form action={updateProfileAction}>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="full_name">Full Name</Label>
+                      <Input
+                        id="full_name"
+                        name="full_name"
+                        defaultValue={user?.user_metadata?.full_name || ""}
+                        placeholder="John Doe"
+                      />
                     </div>
-                    <Button variant="outline" size="sm">
-                      Change Image
-                    </Button>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        defaultValue={user?.email || ""}
+                        placeholder="john@example.com"
+                        disabled
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Email cannot be changed. Contact support if needed.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    <textarea
+                      id="bio"
+                      name="bio"
+                      className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      placeholder="Tell us a bit about yourself..."
+                      defaultValue={user?.user_metadata?.bio || ""}
+                    ></textarea>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="profile-image">Profile Image</Label>
+                    <div className="flex items-center gap-4">
+                      <div className="h-16 w-16 rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+                        {user?.user_metadata?.avatar_url ? (
+                          <img
+                            src={user.user_metadata.avatar_url}
+                            alt="Profile"
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <User className="h-8 w-8 text-gray-400" />
+                        )}
+                      </div>
+                      <Button type="button" variant="outline" size="sm">
+                        Change Image
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Profile image upload is not yet available.
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button>
+              </CardContent>
+              <CardFooter className="flex justify-end">
+                <SubmitButton>
                   <Save className="h-4 w-4 mr-2" />
                   Save Changes
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Agency Information</CardTitle>
-              <CardDescription>
-                Update your agency's information and branding.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="agency-name">Agency Name</Label>
-                    <Input
-                      id="agency-name"
-                      defaultValue="Creative Solutions Agency"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="agency-website">Website</Label>
-                    <Input
-                      id="agency-website"
-                      defaultValue="https://example.com"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="agency-email">Contact Email</Label>
-                    <Input
-                      id="agency-email"
-                      type="email"
-                      defaultValue="info@example.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="agency-phone">Contact Phone</Label>
-                    <Input id="agency-phone" defaultValue="+1 (555) 123-4567" />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="agency-address">Address</Label>
-                  <Input
-                    id="agency-address"
-                    defaultValue="123 Marketing Street, San Francisco, CA 94103"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
-                </Button>
-              </div>
-            </CardContent>
+                </SubmitButton>
+              </CardFooter>
+            </form>
           </Card>
         </TabsContent>
 
-        <TabsContent value="billing" className="space-y-6">
+        <TabsContent value="subscription" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Subscription Plan</CardTitle>
+              <CardTitle>Subscription Details</CardTitle>
               <CardDescription>
-                Manage your subscription and billing information.
+                Manage your PitchHub Plus subscription.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -222,315 +212,115 @@ export default async function SettingsPage() {
                 <div className="rounded-lg border p-4">
                   <div className="flex justify-between items-center mb-4">
                     <div>
-                      <h3 className="font-semibold">Pro Plan</h3>
+                      <h3 className="font-semibold">
+                        {subscriptionInfo.isSubscribed ? "PitchHub Plus" : "Free Plan"}
+                      </h3>
                       <p className="text-sm text-muted-foreground">
-                        $49/month, billed monthly
+                        {subscriptionInfo.isSubscribed ? "£45/month" : "Limited features"}
                       </p>
                     </div>
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                      Active
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Next billing date</span>
-                      <span>November 15, 2023</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Payment method</span>
-                      <span>Visa ending in 4242</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <Button variant="outline" size="sm">
-                      Update Payment Method
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                    <Badge 
+                      variant={subscriptionInfo.isSubscribed ? "premium" : "outline"}
+                      className={subscriptionInfo.isSubscribed ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white" : ""}
                     >
-                      Cancel Subscription
-                    </Button>
+                      {subscriptionInfo.isSubscribed ? "Active" : "Inactive"}
+                    </Badge>
                   </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Available Plans</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold">Basic</h4>
-                      <p className="text-2xl font-bold mt-2 mb-1">
-                        $29
-                        <span className="text-sm font-normal text-muted-foreground">
-                          /month
-                        </span>
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        For small agencies
-                      </p>
-                      <ul className="space-y-2 mb-4">
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>Up to 5 team members</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>20 proposals per month</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>Basic analytics</span>
-                        </li>
-                      </ul>
-                      <Button variant="outline" className="w-full">
-                        Downgrade
-                      </Button>
-                    </div>
-                    <div className="border-2 border-blue-500 rounded-lg p-4 shadow-sm">
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-semibold">Pro</h4>
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                          Current
-                        </span>
-                      </div>
-                      <p className="text-2xl font-bold mt-2 mb-1">
-                        $49
-                        <span className="text-sm font-normal text-muted-foreground">
-                          /month
-                        </span>
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        For growing agencies
-                      </p>
-                      <ul className="space-y-2 mb-4">
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>Up to 15 team members</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>Unlimited proposals</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>Advanced analytics</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>Custom branding</span>
-                        </li>
-                      </ul>
-                      <Button disabled className="w-full">
-                        Current Plan
-                      </Button>
-                    </div>
-                    <div className="border rounded-lg p-4">
-                      <h4 className="font-semibold">Enterprise</h4>
-                      <p className="text-2xl font-bold mt-2 mb-1">
-                        $99
-                        <span className="text-sm font-normal text-muted-foreground">
-                          /month
-                        </span>
-                      </p>
-                      <p className="text-sm text-muted-foreground mb-4">
-                        For large agencies
-                      </p>
-                      <ul className="space-y-2 mb-4">
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>Unlimited team members</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>Unlimited proposals</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>Advanced analytics</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>Custom branding</span>
-                        </li>
-                        <li className="flex items-start gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5" />
-                          <span>Priority support</span>
-                        </li>
-                      </ul>
-                      <Button className="w-full">Upgrade</Button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Billing History</h3>
-                  <div className="rounded-md border">
-                    <div className="grid grid-cols-5 border-b bg-muted/50 p-3 text-sm font-medium">
-                      <div className="col-span-2">Date</div>
-                      <div className="col-span-1">Amount</div>
-                      <div className="col-span-1">Status</div>
-                      <div className="col-span-1">Invoice</div>
-                    </div>
-                    <div className="divide-y">
-                      {[
-                        {
-                          date: "Oct 15, 2023",
-                          amount: "$49.00",
-                          status: "Paid",
-                        },
-                        {
-                          date: "Sep 15, 2023",
-                          amount: "$49.00",
-                          status: "Paid",
-                        },
-                        {
-                          date: "Aug 15, 2023",
-                          amount: "$49.00",
-                          status: "Paid",
-                        },
-                      ].map((invoice, index) => (
-                        <div
-                          key={index}
-                          className="grid grid-cols-5 p-3 text-sm"
-                        >
-                          <div className="col-span-2">{invoice.date}</div>
-                          <div className="col-span-1">{invoice.amount}</div>
-                          <div className="col-span-1">
-                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                              {invoice.status}
-                            </span>
-                          </div>
-                          <div className="col-span-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 p-0 text-blue-600 hover:text-blue-800"
-                            >
-                              Download
-                            </Button>
-                          </div>
+                  
+                  {subscriptionInfo.isSubscribed && (
+                    <div className="space-y-2">
+                      {subscriptionInfo.isTrialing && (
+                        <div className="flex items-center gap-2 mb-3 bg-blue-50 p-2 rounded-md">
+                          <Clock className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm text-blue-700">
+                            Trial period: {subscriptionInfo.daysRemaining} day{subscriptionInfo.daysRemaining !== 1 ? 's' : ''} remaining
+                          </span>
                         </div>
-                      ))}
+                      )}
+                      
+                      <div className="flex justify-between text-sm">
+                        <span>Subscription ID</span>
+                        <span className="font-mono text-xs">
+                          {subscriptionInfo.subscription?.id?.substring(0, 14)}...
+                        </span>
+                      </div>
+                      
+                      <div className="flex justify-between text-sm">
+                        <span>Started on</span>
+                        <span>
+                          {formatDate(subscriptionInfo.subscription?.created_at)}
+                        </span>
+                      </div>
+                      
+                      {subscriptionInfo.isTrialing ? (
+                        <div className="flex justify-between text-sm">
+                          <span>Trial ends on</span>
+                          <span>{formatDate(subscriptionInfo.trialEnd)}</span>
+                        </div>
+                      ) : (
+                        <div className="flex justify-between text-sm">
+                          <span>Next billing date</span>
+                          <span>
+                            {formatDate(subscriptionInfo.subscription?.current_period_end)}
+                          </span>
+                        </div>
+                      )}
+                      
+                      <div className="mt-4 flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => window.open('https://billing.stripe.com/p/login/test_28o5nA9Ot8Ub9yw288', '_blank')}
+                        >
+                          Manage Billing
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          Cancel Subscription
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="notifications" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
-              <CardDescription>
-                Manage how and when you receive notifications.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Email Notifications</h3>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        id: "proposal-viewed",
-                        label: "When a proposal is viewed by a client",
-                      },
-                      {
-                        id: "proposal-accepted",
-                        label: "When a proposal is accepted",
-                      },
-                      {
-                        id: "proposal-rejected",
-                        label: "When a proposal is rejected",
-                      },
-                      {
-                        id: "comment-added",
-                        label: "When a comment is added to a proposal",
-                      },
-                      {
-                        id: "team-changes",
-                        label: "When team members are added or removed",
-                      },
-                    ].map((notification) => (
-                      <div
-                        key={notification.id}
-                        className="flex items-center justify-between"
+                  )}
+                  
+                  {!subscriptionInfo.isSubscribed && (
+                    <div className="mt-4">
+                      <Button
+                        onClick={() => window.location.href = '/#pricing'}
                       >
-                        <Label htmlFor={notification.id} className="text-sm">
-                          {notification.label}
-                        </Label>
-                        <input
-                          type="checkbox"
-                          id={notification.id}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          defaultChecked
-                        />
-                      </div>
-                    ))}
-                  </div>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        Upgrade to PitchHub Plus
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-lg font-medium">System Notifications</h3>
-                  <div className="space-y-3">
-                    {[
-                      {
-                        id: "system-updates",
-                        label: "Product updates and announcements",
-                      },
-                      {
-                        id: "maintenance",
-                        label: "Scheduled maintenance notifications",
-                      },
-                      { id: "tips", label: "Tips and best practices" },
-                      {
-                        id: "marketing",
-                        label: "Marketing and promotional emails",
-                      },
-                    ].map((notification) => (
-                      <div
-                        key={notification.id}
-                        className="flex items-center justify-between"
-                      >
-                        <Label htmlFor={notification.id} className="text-sm">
-                          {notification.label}
-                        </Label>
-                        <input
-                          type="checkbox"
-                          id={notification.id}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          defaultChecked={notification.id !== "marketing"}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Notification Delivery</h3>
-                  <div className="space-y-2">
-                    <Label htmlFor="notification-frequency">
-                      Email Digest Frequency
-                    </Label>
-                    <select
-                      id="notification-frequency"
-                      className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
-                    >
-                      <option value="immediate">Send immediately</option>
-                      <option value="daily">Daily digest</option>
-                      <option value="weekly">Weekly digest</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Preferences
-                  </Button>
+                  <h3 className="text-lg font-medium">PitchHub Plus Features</h3>
+                  <ul className="space-y-2">
+                    <li className="flex items-start gap-2 text-sm">
+                      <Check className="h-4 w-4 text-green-500 mt-0.5" />
+                      <span>Unlimited Pitches</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm">
+                      <Check className="h-4 w-4 text-green-500 mt-0.5" />
+                      <span>AI-Powered Content</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm">
+                      <Check className="h-4 w-4 text-green-500 mt-0.5" />
+                      <span>Custom Branding</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm">
+                      <Check className="h-4 w-4 text-green-500 mt-0.5" />
+                      <span>Team Collaboration</span>
+                    </li>
+                    <li className="flex items-start gap-2 text-sm">
+                      <Check className="h-4 w-4 text-green-500 mt-0.5" />
+                      <span>Priority Support</span>
+                    </li>
+                  </ul>
                 </div>
               </div>
             </CardContent>
@@ -545,399 +335,129 @@ export default async function SettingsPage() {
                 Manage your password and security settings.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Change Password</h3>
+            <form action={updatePasswordAction}>
+              <CardContent className="space-y-6">
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="current-password">Current Password</Label>
-                    <Input id="current-password" type="password" />
+                  <h3 className="text-lg font-medium">Change Password</h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="current_password">Current Password</Label>
+                      <Input id="current_password" name="current_password" type="password" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="new_password">New Password</Label>
+                      <Input id="new_password" name="new_password" type="password" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm_password">
+                        Confirm New Password
+                      </Label>
+                      <Input id="confirm_password" name="confirm_password" type="password" />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-password">New Password</Label>
-                    <Input id="new-password" type="password" />
+                </div>
+              </CardContent>
+              <CardFooter>
+                <SubmitButton>
+                  <Key className="h-4 w-4 mr-2" />
+                  Update Password
+                </SubmitButton>
+              </CardFooter>
+            </form>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Sessions</CardTitle>
+              <CardDescription>
+                Manage your active sessions and sign out from other devices.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="rounded-md border">
+                <div className="grid grid-cols-3 border-b bg-muted/50 p-3 text-sm font-medium">
+                  <div className="col-span-1">Device</div>
+                  <div className="col-span-1">Last Active</div>
+                  <div className="col-span-1">Action</div>
+                </div>
+                <div className="divide-y">
+                  <div className="grid grid-cols-3 p-3 text-sm">
+                    <div className="col-span-1">Current Session</div>
+                    <div className="col-span-1">Now</div>
+                    <div className="col-span-1">
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                        Active
+                      </span>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm-password">
-                      Confirm New Password
-                    </Label>
-                    <Input id="confirm-password" type="password" />
-                  </div>
-                  <Button>
-                    <Key className="h-4 w-4 mr-2" />
-                    Update Password
-                  </Button>
                 </div>
               </div>
-
-              <div className="pt-6 border-t space-y-4">
-                <h3 className="text-lg font-medium">
-                  Two-Factor Authentication
-                </h3>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">
-                      Two-factor authentication is disabled
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Add an extra layer of security to your account
-                    </p>
-                  </div>
-                  <Button variant="outline">
-                    <Shield className="h-4 w-4 mr-2" />
-                    Enable
-                  </Button>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t space-y-4">
-                <h3 className="text-lg font-medium">Sessions</h3>
-                <div className="rounded-md border">
-                  <div className="grid grid-cols-3 border-b bg-muted/50 p-3 text-sm font-medium">
-                    <div className="col-span-1">Device</div>
-                    <div className="col-span-1">Location</div>
-                    <div className="col-span-1">Last Active</div>
-                  </div>
-                  <div className="divide-y">
-                    {[
-                      {
-                        device: "Chrome on Windows",
-                        location: "San Francisco, CA",
-                        lastActive: "Now (Current session)",
-                      },
-                      {
-                        device: "Safari on iPhone",
-                        location: "San Francisco, CA",
-                        lastActive: "Yesterday at 2:43 PM",
-                      },
-                      {
-                        device: "Firefox on Mac",
-                        location: "New York, NY",
-                        lastActive: "Oct 15, 2023 at 10:31 AM",
-                      },
-                    ].map((session, index) => (
-                      <div key={index} className="grid grid-cols-3 p-3 text-sm">
-                        <div className="col-span-1">{session.device}</div>
-                        <div className="col-span-1">{session.location}</div>
-                        <div className="col-span-1 flex items-center justify-between">
-                          <span>{session.lastActive}</span>
-                          {index > 0 && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 p-0 text-red-500 hover:text-red-600"
-                            >
-                              Logout
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <form action={signOutAction}>
                 <Button
+                  type="submit"
                   variant="outline"
                   className="text-red-500 hover:text-red-600 hover:bg-red-50"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  Logout of All Sessions
+                  Sign Out of All Sessions
                 </Button>
-              </div>
+              </form>
+            </CardContent>
+          </Card>
 
-              <div className="pt-6 border-t space-y-4">
-                <h3 className="text-lg font-medium">Account Deletion</h3>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-red-600">Danger Zone</CardTitle>
+              <CardDescription>
+                Permanently delete your account and all associated data.
+              </CardDescription>
+            </CardHeader>
+            <form action={deleteAccountAction}>
+              <CardContent className="space-y-4">
                 <div className="bg-red-50 border border-red-100 rounded-md p-4">
                   <p className="text-sm text-red-800 mb-4">
-                    Permanently delete your account and all of your content.
-                    This action cannot be undone.
+                    This action is irreversible. All your data, including proposals, 
+                    settings, and subscription information will be permanently deleted.
                   </p>
-                  <Button
-                    variant="outline"
-                    className="text-red-500 hover:text-red-600 hover:bg-red-100 border-red-200"
-                  >
-                    <Trash className="h-4 w-4 mr-2" />
-                    Delete Account
-                  </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmation" className="text-red-800">
+                      Type DELETE to confirm
+                    </Label>
+                    <Input
+                      id="confirmation"
+                      name="confirmation"
+                      placeholder="DELETE"
+                      className="border-red-200"
+                    />
+                  </div>
                 </div>
-              </div>
-            </CardContent>
+              </CardContent>
+              <CardFooter>
+                <SubmitButton variant="destructive">
+                  <Trash className="h-4 w-4 mr-2" />
+                  Delete Account
+                </SubmitButton>
+              </CardFooter>
+            </form>
           </Card>
         </TabsContent>
 
         <TabsContent value="team" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Team Members</CardTitle>
+              <CardTitle>Team Management</CardTitle>
               <CardDescription>
-                Manage your team and their permissions.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex justify-between items-center">
-                <p className="text-sm text-muted-foreground">
-                  5 of 15 team members (Pro Plan)
-                </p>
-                <Button>
-                  <UserPlus className="h-4 w-4 mr-2" />
-                  Invite Team Member
-                </Button>
-              </div>
-
-              <div className="rounded-md border">
-                <div className="grid grid-cols-12 border-b bg-muted/50 p-3 text-sm font-medium">
-                  <div className="col-span-3">Name</div>
-                  <div className="col-span-3">Email</div>
-                  <div className="col-span-2">Role</div>
-                  <div className="col-span-2">Status</div>
-                  <div className="col-span-2">Actions</div>
-                </div>
-                <div className="divide-y">
-                  {[
-                    {
-                      name: "John Doe",
-                      email: "john@example.com",
-                      role: "Admin",
-                      status: "Active",
-                    },
-                    {
-                      name: "Jane Smith",
-                      email: "jane@example.com",
-                      role: "Editor",
-                      status: "Active",
-                    },
-                    {
-                      name: "Bob Johnson",
-                      email: "bob@example.com",
-                      role: "Viewer",
-                      status: "Active",
-                    },
-                    {
-                      name: "Alice Williams",
-                      email: "alice@example.com",
-                      role: "Editor",
-                      status: "Invited",
-                    },
-                    {
-                      name: "Charlie Brown",
-                      email: "charlie@example.com",
-                      role: "Viewer",
-                      status: "Invited",
-                    },
-                  ].map((member, index) => (
-                    <div
-                      key={index}
-                      className="grid grid-cols-12 p-3 text-sm items-center"
-                    >
-                      <div className="col-span-3 flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-medium">
-                          {member.name
-                            .split(" ")
-                            .map((n) => n[0])
-                            .join("")}
-                        </div>
-                        <span>{member.name}</span>
-                      </div>
-                      <div className="col-span-3">{member.email}</div>
-                      <div className="col-span-2">
-                        <select
-                          className="w-full h-8 rounded-md border border-input bg-background px-2 py-1 text-xs shadow-sm transition-colors"
-                          defaultValue={member.role.toLowerCase()}
-                        >
-                          <option value="admin">Admin</option>
-                          <option value="editor">Editor</option>
-                          <option value="viewer">Viewer</option>
-                        </select>
-                      </div>
-                      <div className="col-span-2">
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full ${member.status === "Active" ? "bg-green-100 text-green-800" : "bg-yellow-100 text-yellow-800"}`}
-                        >
-                          {member.status}
-                        </span>
-                      </div>
-                      <div className="col-span-2 flex items-center gap-2">
-                        {member.status === "Invited" ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 text-xs"
-                          >
-                            Resend
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 text-xs"
-                          >
-                            Edit
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 text-xs text-red-500 hover:text-red-600"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Pending Invitations</h3>
-                <div className="rounded-md border">
-                  <div className="grid grid-cols-12 border-b bg-muted/50 p-3 text-sm font-medium">
-                    <div className="col-span-4">Email</div>
-                    <div className="col-span-3">Role</div>
-                    <div className="col-span-3">Invited On</div>
-                    <div className="col-span-2">Actions</div>
-                  </div>
-                  <div className="divide-y">
-                    {[
-                      {
-                        email: "david@example.com",
-                        role: "Editor",
-                        invitedOn: "Oct 15, 2023",
-                      },
-                      {
-                        email: "sarah@example.com",
-                        role: "Viewer",
-                        invitedOn: "Oct 14, 2023",
-                      },
-                    ].map((invitation, index) => (
-                      <div
-                        key={index}
-                        className="grid grid-cols-12 p-3 text-sm items-center"
-                      >
-                        <div className="col-span-4">{invitation.email}</div>
-                        <div className="col-span-3">{invitation.role}</div>
-                        <div className="col-span-3">{invitation.invitedOn}</div>
-                        <div className="col-span-2 flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 text-xs"
-                          >
-                            Resend
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 text-xs text-red-500 hover:text-red-600"
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Team Permissions</CardTitle>
-              <CardDescription>
-                Configure what team members can do based on their role.
+                Team management features will be available soon.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                <div className="rounded-md border">
-                  <div className="grid grid-cols-4 border-b bg-muted/50 p-3 text-sm font-medium">
-                    <div className="col-span-1">Permission</div>
-                    <div className="col-span-1 text-center">Admin</div>
-                    <div className="col-span-1 text-center">Editor</div>
-                    <div className="col-span-1 text-center">Viewer</div>
-                  </div>
-                  <div className="divide-y">
-                    {[
-                      {
-                        permission: "View proposals",
-                        admin: true,
-                        editor: true,
-                        viewer: true,
-                      },
-                      {
-                        permission: "Create proposals",
-                        admin: true,
-                        editor: true,
-                        viewer: false,
-                      },
-                      {
-                        permission: "Edit proposals",
-                        admin: true,
-                        editor: true,
-                        viewer: false,
-                      },
-                      {
-                        permission: "Delete proposals",
-                        admin: true,
-                        editor: false,
-                        viewer: false,
-                      },
-                      {
-                        permission: "Manage team members",
-                        admin: true,
-                        editor: false,
-                        viewer: false,
-                      },
-                      {
-                        permission: "Manage billing",
-                        admin: true,
-                        editor: false,
-                        viewer: false,
-                      },
-                      {
-                        permission: "Access agency settings",
-                        admin: true,
-                        editor: false,
-                        viewer: false,
-                      },
-                    ].map((perm, index) => (
-                      <div
-                        key={index}
-                        className="grid grid-cols-4 p-3 text-sm items-center"
-                      >
-                        <div className="col-span-1">{perm.permission}</div>
-                        <div className="col-span-1 text-center">
-                          {perm.admin ? (
-                            <Check className="h-4 w-4 text-green-500 mx-auto" />
-                          ) : (
-                            "-"
-                          )}
-                        </div>
-                        <div className="col-span-1 text-center">
-                          {perm.editor ? (
-                            <Check className="h-4 w-4 text-green-500 mx-auto" />
-                          ) : (
-                            "-"
-                          )}
-                        </div>
-                        <div className="col-span-1 text-center">
-                          {perm.viewer ? (
-                            <Check className="h-4 w-4 text-green-500 mx-auto" />
-                          ) : (
-                            "-"
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button>
-                    <Save className="h-4 w-4 mr-2" />
-                    Save Permissions
-                  </Button>
-                </div>
-              </div>
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Coming Soon</AlertTitle>
+                <AlertDescription>
+                  Team management features are currently in development and will be available soon.
+                </AlertDescription>
+              </Alert>
             </CardContent>
           </Card>
         </TabsContent>
