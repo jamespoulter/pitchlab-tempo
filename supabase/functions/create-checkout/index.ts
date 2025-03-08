@@ -18,14 +18,14 @@ serve(async (req) => {
   }
 
   try {
-    const { price_id, user_id, return_url } = await req.json();
+    const { price_id, user_id, return_url, trial_period_days, coupon_id } = await req.json();
     
     if (!price_id || !user_id || !return_url) {
       throw new Error('Missing required parameters');
     }
 
-    // Create Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
+    // Create Stripe checkout session with enhanced options
+    const sessionOptions = {
       payment_method_types: ['card'],
       line_items: [
         {
@@ -40,7 +40,29 @@ serve(async (req) => {
       metadata: {
         user_id,
       },
-    });
+      // Enable automatic tax calculation if configured in Stripe
+      automatic_tax: { enabled: true },
+      // Allow promotion codes to be applied at checkout
+      allow_promotion_codes: true,
+    };
+
+    // Add subscription trial period if specified
+    if (trial_period_days && !isNaN(Number(trial_period_days))) {
+      sessionOptions.subscription_data = {
+        trial_period_days: Number(trial_period_days),
+      };
+    }
+
+    // Apply coupon if provided
+    if (coupon_id) {
+      sessionOptions.discounts = [
+        {
+          coupon: coupon_id,
+        },
+      ];
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionOptions);
 
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),
