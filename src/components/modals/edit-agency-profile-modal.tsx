@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import { AgencyProfile, AgencyProfileFormData } from "@/types/agency";
 import { upsertAgencyProfile } from "@/utils/supabase-client";
 import { toast } from "sonner";
@@ -35,6 +35,15 @@ export function EditAgencyProfileModal({
   const [newIndustry, setNewIndustry] = useState("");
   const [mission, setMission] = useState(initialData.mission || "");
   const [vision, setVision] = useState(initialData.vision || "");
+  const [socialMedia, setSocialMedia] = useState<{
+    linkedin?: string;
+    twitter?: string;
+    instagram?: string;
+    facebook?: string;
+    [key: string]: string | undefined;
+  }>(initialData.social_media || {});
+  const [values, setValues] = useState<string[]>(initialData.values || []);
+  const [newValue, setNewValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const addIndustry = () => {
@@ -46,6 +55,24 @@ export function EditAgencyProfileModal({
 
   const removeIndustry = (index: number) => {
     setIndustries(industries.filter((_, i) => i !== index));
+  };
+
+  const addValue = () => {
+    if (newValue.trim()) {
+      setValues([...values, newValue.trim()]);
+      setNewValue("");
+    }
+  };
+
+  const removeValue = (index: number) => {
+    setValues(values.filter((_, i) => i !== index));
+  };
+
+  const handleSocialMediaChange = (platform: string, value: string) => {
+    setSocialMedia({
+      ...socialMedia,
+      [platform]: value,
+    });
   };
 
   const handleSave = async () => {
@@ -64,6 +91,8 @@ export function EditAgencyProfileModal({
         industries,
         mission,
         vision,
+        social_media: socialMedia,
+        values,
       };
       
       const { success, data, error } = await upsertAgencyProfile(profileData);
@@ -96,7 +125,7 @@ export function EditAgencyProfileModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-[600px] max-h-[90vh] overflow-y-auto p-6">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-[700px] max-h-[90vh] overflow-y-auto p-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold">Edit Agency Profile</h2>
           <button 
@@ -263,6 +292,88 @@ export function EditAgencyProfileModal({
               onChange={(e) => setVision(e.target.value)}
               placeholder="Your agency's vision for the future..."
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Core Values</Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {values.map((value, index) => (
+                <div
+                  key={index}
+                  className="flex items-center bg-green-50 text-green-700 px-2 py-1 rounded-md text-sm"
+                >
+                  {value}
+                  <button
+                    type="button"
+                    onClick={() => removeValue(index)}
+                    className="ml-1 text-green-500 hover:text-green-700"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newValue}
+                onChange={(e) => setNewValue(e.target.value)}
+                placeholder="Add value (e.g., Innovation - We embrace new ideas)"
+                className="flex-1"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addValue();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                onClick={addValue}
+                size="sm"
+                className="flex items-center"
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Social Media Profiles</Label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-2">
+                <Linkedin className="h-5 w-5 text-blue-600" />
+                <Input
+                  value={socialMedia.linkedin || ""}
+                  onChange={(e) => handleSocialMediaChange("linkedin", e.target.value)}
+                  placeholder="LinkedIn username"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Twitter className="h-5 w-5 text-blue-400" />
+                <Input
+                  value={socialMedia.twitter || ""}
+                  onChange={(e) => handleSocialMediaChange("twitter", e.target.value)}
+                  placeholder="Twitter handle (e.g., @example)"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Instagram className="h-5 w-5 text-pink-600" />
+                <Input
+                  value={socialMedia.instagram || ""}
+                  onChange={(e) => handleSocialMediaChange("instagram", e.target.value)}
+                  placeholder="Instagram handle (e.g., @example)"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Facebook className="h-5 w-5 text-blue-800" />
+                <Input
+                  value={socialMedia.facebook || ""}
+                  onChange={(e) => handleSocialMediaChange("facebook", e.target.value)}
+                  placeholder="Facebook page name"
+                />
+              </div>
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-2 mt-4">

@@ -5,7 +5,7 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Set up security policies for the agency-logos bucket
 -- Allow public access to view logos
-CREATE POLICY "Public Access"
+CREATE POLICY "Public Access to Agency Logos"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'agency-logos');
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,19 +8,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { X, Upload, Loader2 } from "lucide-react";
 import { uploadCredentialImage } from "@/utils/supabase-client";
 import { toast } from "sonner";
-import { AgencyCredentialFormData } from "@/types/agency";
+import { AgencyCredential, AgencyCredentialFormData } from "@/types/agency";
 
-interface AddCredentialModalProps {
+interface EditCredentialModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  onSave?: (credential: any) => void;
+  onSave?: (credentialId: string, credential: Partial<AgencyCredentialFormData>) => void;
+  credential?: AgencyCredential | null;
 }
 
-export function AddCredentialModal({
+export function EditCredentialModal({
   open,
   onOpenChange,
   onSave,
-}: AddCredentialModalProps) {
+  credential,
+}: EditCredentialModalProps) {
   const [title, setTitle] = useState("");
   const [issuer, setIssuer] = useState("");
   const [issueDate, setIssueDate] = useState("");
@@ -31,6 +33,20 @@ export function AddCredentialModal({
   const [image, setImage] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load credential data when the modal opens or credential changes
+  useEffect(() => {
+    if (credential && open) {
+      setTitle(credential.title || "");
+      setIssuer(credential.issuer || "");
+      setIssueDate(credential.issue_date ? credential.issue_date.split('T')[0] : "");
+      setExpiryDate(credential.expiry_date ? credential.expiry_date.split('T')[0] : "");
+      setDescription(credential.description || "");
+      setCredentialId(credential.credential_id || "");
+      setCredentialUrl(credential.credential_url || "");
+      setImage(credential.image_url || "");
+    }
+  }, [credential, open]);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -74,10 +90,15 @@ export function AddCredentialModal({
       return;
     }
     
+    if (!credential?.id) {
+      toast.error("Credential ID is missing");
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
-      const newCredential: AgencyCredentialFormData = {
+      const updatedCredential: Partial<AgencyCredentialFormData> = {
         title,
         issuer,
         issue_date: issueDate,
@@ -89,18 +110,8 @@ export function AddCredentialModal({
       };
       
       if (onSave) {
-        onSave(newCredential);
+        onSave(credential.id, updatedCredential);
       }
-      
-      // Reset form
-      setTitle("");
-      setIssuer("");
-      setIssueDate("");
-      setExpiryDate("");
-      setDescription("");
-      setCredentialId("");
-      setCredentialUrl("");
-      setImage("");
       
       if (onOpenChange) {
         onOpenChange(false);
@@ -114,16 +125,6 @@ export function AddCredentialModal({
   };
 
   const handleClose = () => {
-    // Reset form
-    setTitle("");
-    setIssuer("");
-    setIssueDate("");
-    setExpiryDate("");
-    setDescription("");
-    setCredentialId("");
-    setCredentialUrl("");
-    setImage("");
-    
     if (onOpenChange) {
       onOpenChange(false);
     }
@@ -137,7 +138,7 @@ export function AddCredentialModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-[600px] max-h-[90vh] overflow-y-auto p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Add Credential</h2>
+          <h2 className="text-lg font-semibold">Edit Credential</h2>
           <button 
             onClick={handleClose}
             className="text-gray-500 hover:text-gray-700"
@@ -146,7 +147,7 @@ export function AddCredentialModal({
           </button>
         </div>
         <p className="text-sm text-gray-500 mb-4">
-          Add a new certification or qualification to showcase your agency's expertise.
+          Update certification or qualification details.
         </p>
         <div className="grid gap-4 py-4">
           <div className="space-y-2">
@@ -284,11 +285,11 @@ export function AddCredentialModal({
                 Saving...
               </>
             ) : (
-              "Save Credential"
+              "Update Credential"
             )}
           </Button>
         </div>
       </div>
     </div>
   );
-}
+} 

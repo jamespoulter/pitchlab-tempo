@@ -6,50 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X, Upload } from "lucide-react";
-
-interface BrandColor {
-  name: string;
-  color: string;
-  variable: string;
-}
-
-interface Typography {
-  headings: {
-    fontFamily: string;
-    weights: string[];
-    sizes: {
-      h1: string;
-      h2: string;
-      h3: string;
-      h4: string;
-      h5: string;
-    };
-  };
-  body: {
-    fontFamily: string;
-    weights: string[];
-    size: string;
-    lineHeight: string;
-  };
-}
-
-interface LogoVariation {
-  name: string;
-  url: string;
-}
-
-interface BrandingDetails {
-  colors: BrandColor[];
-  typography: Typography;
-  logoVariations: LogoVariation[];
-  brandGuidelines: string;
-}
+import { ColorItem, Typography, AgencyBranding } from "@/types/agency";
+import { upsertAgencyBranding, uploadBrandingAsset } from "@/utils/supabase-client";
+import { toast } from "sonner";
 
 interface EditBrandingModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  onSave?: (brandingDetails: BrandingDetails) => void;
-  initialData?: BrandingDetails;
+  onSave?: (brandingDetails: AgencyBranding) => void;
+  initialData?: Partial<AgencyBranding>;
 }
 
 export function EditBrandingModal({
@@ -67,73 +32,63 @@ export function EditBrandingModal({
       body: {
         fontFamily: "",
         weights: [],
-        size: "",
-        lineHeight: "",
       },
     },
-    logoVariations: [],
-    brandGuidelines: "",
   },
 }: EditBrandingModalProps) {
-  const [colors, setColors] = useState<BrandColor[]>(initialData.colors || []);
+  const [colors, setColors] = useState<ColorItem[]>(initialData.colors || []);
   const [newColorName, setNewColorName] = useState("");
   const [newColorValue, setNewColorValue] = useState("#000000");
   const [newColorVariable, setNewColorVariable] = useState("");
   
-  const [headingsFontFamily, setHeadingsFontFamily] = useState(
-    initialData.typography?.headings?.fontFamily || ""
-  );
-  const [headingsWeights, setHeadingsWeights] = useState<string[]>(
-    initialData.typography?.headings?.weights || []
-  );
-  const [headingsSizes, setHeadingsSizes] = useState(
-    initialData.typography?.headings?.sizes || {
-      h1: "",
-      h2: "",
-      h3: "",
-      h4: "",
-      h5: "",
-    }
-  );
+  const [typography, setTypography] = useState<Typography>(initialData.typography || {
+    headings: {
+      fontFamily: "",
+      weights: [],
+      sizes: { h1: "", h2: "", h3: "", h4: "", h5: "" },
+    },
+    body: {
+      fontFamily: "",
+      weights: [],
+    },
+  });
   
-  const [bodyFontFamily, setBodyFontFamily] = useState(
-    initialData.typography?.body?.fontFamily || ""
-  );
-  const [bodyWeights, setBodyWeights] = useState<string[]>(
-    initialData.typography?.body?.weights || []
-  );
-  const [bodySize, setBodySize] = useState(
-    initialData.typography?.body?.size || ""
-  );
-  const [bodyLineHeight, setBodyLineHeight] = useState(
-    initialData.typography?.body?.lineHeight || ""
-  );
+  const [logoUrl, setLogoUrl] = useState<string | undefined>(initialData.logo_url);
+  const [logoDarkUrl, setLogoDarkUrl] = useState<string | undefined>(initialData.logo_dark_url);
+  const [iconUrl, setIconUrl] = useState<string | undefined>(initialData.icon_url);
+  const [assets, setAssets] = useState<string[]>(initialData.assets || []);
   
-  const [logoVariations, setLogoVariations] = useState<LogoVariation[]>(
-    initialData.logoVariations || []
-  );
-  const [newLogoName, setNewLogoName] = useState("");
-  const [newLogoUrl, setNewLogoUrl] = useState("");
-  
-  const [brandGuidelines, setBrandGuidelines] = useState(
-    initialData.brandGuidelines || ""
-  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
 
   const addColor = () => {
+    console.log("Adding color:", { newColorName, newColorValue, newColorVariable });
+    console.log("Current colors before adding:", colors);
+    
     if (newColorName.trim() && newColorValue.trim() && newColorVariable.trim()) {
-      setColors([
-        ...colors,
-        {
-          name: newColorName.trim(),
-          color: newColorValue.trim(),
-          variable: newColorVariable.trim().startsWith("--")
-            ? newColorVariable.trim()
-            : `--${newColorVariable.trim()}`,
-        },
-      ]);
+      const newColor = {
+        name: newColorName.trim(),
+        color: newColorValue.trim(),
+        variable: newColorVariable.trim(),
+      };
+      
+      const updatedColors = [...colors, newColor];
+      console.log("New color to add:", newColor);
+      console.log("Updated colors array:", updatedColors);
+      
+      // Update the state with the new colors array
+      setColors(updatedColors);
+      
+      // Clear the input fields
       setNewColorName("");
       setNewColorValue("#000000");
       setNewColorVariable("");
+      
+      // Show a toast notification
+      toast.success(`Added ${newColor.name} color`);
+    } else {
+      console.log("Missing required color fields");
+      toast.error("Please fill in all color fields");
     }
   };
 
@@ -141,50 +96,126 @@ export function EditBrandingModal({
     setColors(colors.filter((_, i) => i !== index));
   };
 
-  const addLogoVariation = () => {
-    if (newLogoName.trim() && newLogoUrl.trim()) {
-      setLogoVariations([
-        ...logoVariations,
-        {
-          name: newLogoName.trim(),
-          url: newLogoUrl.trim(),
-        },
-      ]);
-      setNewLogoName("");
-      setNewLogoUrl("");
-    }
+  const handleTypographyChange = (
+    section: "headings" | "body",
+    field: string,
+    value: any
+  ) => {
+    setTypography({
+      ...typography,
+      [section]: {
+        ...typography[section],
+        [field]: value,
+      },
+    });
   };
 
-  const removeLogoVariation = (index: number) => {
-    setLogoVariations(logoVariations.filter((_, i) => i !== index));
-  };
-
-  const handleSave = () => {
-    const updatedBranding: BrandingDetails = {
-      colors,
-      typography: {
-        headings: {
-          fontFamily: headingsFontFamily,
-          weights: headingsWeights,
-          sizes: headingsSizes,
-        },
-        body: {
-          fontFamily: bodyFontFamily,
-          weights: bodyWeights,
-          size: bodySize,
-          lineHeight: bodyLineHeight,
+  const handleHeadingSizeChange = (level: string, value: string) => {
+    setTypography({
+      ...typography,
+      headings: {
+        ...typography.headings,
+        sizes: {
+          ...typography.headings.sizes,
+          [level]: value,
         },
       },
-      logoVariations,
-      brandGuidelines,
-    };
+    });
+  };
+
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    type: 'logo' | 'logo_dark' | 'icon' | 'asset'
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
     
-    if (onSave) {
-      onSave(updatedBranding);
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      toast.error("File size exceeds 5MB limit");
+      return;
     }
     
-    if (onOpenChange) {
-      onOpenChange(false);
+    try {
+      setUploadingType(type);
+      setIsLoading(true);
+      
+      const { success, url, error } = await uploadBrandingAsset(file, type);
+      
+      if (!success || error) {
+        console.error(`Error uploading ${type}:`, error);
+        toast.error(`Failed to upload ${type}`);
+        return;
+      }
+      
+      // Update the appropriate state based on the type
+      if (type === 'logo') {
+        setLogoUrl(url);
+      } else if (type === 'logo_dark') {
+        setLogoDarkUrl(url);
+      } else if (type === 'icon') {
+        setIconUrl(url);
+      } else if (type === 'asset') {
+        setAssets([...assets, url!]);
+      }
+      
+      toast.success(`${type} uploaded successfully`);
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setUploadingType(null);
+      setIsLoading(false);
+    }
+  };
+
+  const removeAsset = (index: number) => {
+    setAssets(assets.filter((_, i) => i !== index));
+  };
+
+  const handleSave = async () => {
+    setIsLoading(true);
+    
+    try {
+      console.log("Current colors before save:", colors);
+      console.log("Current typography before save:", typography);
+      
+      // Make sure colors is an array
+      const colorsToSave = Array.isArray(colors) ? colors : [];
+      
+      const brandingData: Partial<AgencyBranding> = {
+        colors: colorsToSave,
+        typography,
+        logo_url: logoUrl,
+        logo_dark_url: logoDarkUrl,
+        icon_url: iconUrl,
+        assets,
+      };
+      
+      console.log("Saving branding data:", brandingData);
+      
+      const { success, data, error } = await upsertAgencyBranding(brandingData);
+      
+      console.log("Save result:", { success, data, error });
+      
+      if (success && data) {
+        toast.success("Agency branding saved successfully");
+        
+        if (onSave) {
+          onSave(data);
+        }
+        
+        if (onOpenChange) {
+          onOpenChange(false);
+        }
+      } else {
+        toast.error("Failed to save agency branding");
+        console.error("Error saving agency branding:", error);
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred");
+      console.error("Error in handleSave:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -205,318 +236,334 @@ export function EditBrandingModal({
           </button>
         </div>
         <p className="text-sm text-gray-500 mb-4">
-          Update your agency's visual identity and brand guidelines.
+          Update your agency's branding assets and style guidelines.
         </p>
         
-        <div className="space-y-6">
+        <div className="grid gap-6 py-4">
           {/* Brand Colors Section */}
-          <div className="space-y-4">
-            <h3 className="text-md font-medium">Brand Colors</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-4 border rounded-md p-4">
-                <h4 className="text-sm font-medium">Current Colors</h4>
-                <div className="flex flex-wrap gap-3">
-                  {colors.map((color, index) => (
-                    <div key={index} className="relative group">
-                      <div
-                        className="w-16 h-16 rounded-md border"
-                        style={{ backgroundColor: color.color }}
-                      ></div>
-                      <div className="mt-1 text-xs">
-                        <p className="font-medium">{color.name}</p>
-                        <p>{color.color}</p>
-                        <p>{color.variable}</p>
-                      </div>
-                      <button
-                        onClick={() => removeColor(index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
+          <div>
+            <h3 className="text-lg font-medium mb-4">Brand Colors</h3>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {colors.map((color, index) => (
+                  <div key={index} className="border rounded-md p-3 relative">
+                    <button
+                      type="button"
+                      onClick={() => removeColor(index)}
+                      className="absolute top-2 right-2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <div 
+                      className="w-full h-12 rounded mb-2" 
+                      style={{ backgroundColor: color.color }}
+                    />
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium">{color.name}</p>
+                      <p className="text-xs text-gray-500">{color.color}</p>
+                      <p className="text-xs text-gray-500">var({color.variable})</p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
               
-              <div className="space-y-4 border rounded-md p-4">
-                <h4 className="text-sm font-medium">Add New Color</h4>
-                <div className="space-y-3">
-                  <div className="space-y-1">
+              <div className="border rounded-md p-4">
+                <h4 className="text-sm font-medium mb-3">Add New Color</h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
                     <Label htmlFor="colorName">Color Name</Label>
                     <Input
                       id="colorName"
                       value={newColorName}
                       onChange={(e) => setNewColorName(e.target.value)}
                       placeholder="Primary"
+                      className="mt-1"
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div>
                     <Label htmlFor="colorValue">Color Value</Label>
-                    <div className="flex gap-2">
+                    <div className="flex mt-1">
                       <Input
                         id="colorValue"
+                        type="color"
+                        value={newColorValue}
+                        onChange={(e) => setNewColorValue(e.target.value)}
+                        className="w-12 p-1 mr-2"
+                      />
+                      <Input
                         value={newColorValue}
                         onChange={(e) => setNewColorValue(e.target.value)}
                         placeholder="#0369a1"
                       />
-                      <input
-                        type="color"
-                        value={newColorValue}
-                        onChange={(e) => setNewColorValue(e.target.value)}
-                        className="w-10 h-10 p-1 rounded border"
-                      />
                     </div>
                   </div>
-                  <div className="space-y-1">
+                  <div>
                     <Label htmlFor="colorVariable">CSS Variable</Label>
                     <Input
                       id="colorVariable"
                       value={newColorVariable}
                       onChange={(e) => setNewColorVariable(e.target.value)}
-                      placeholder="primary"
+                      placeholder="--primary"
+                      className="mt-1"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Will be prefixed with -- if not included
-                    </p>
                   </div>
-                  <Button
-                    onClick={addColor}
-                    className="w-full mt-2"
-                    disabled={!newColorName || !newColorValue || !newColorVariable}
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Color
-                  </Button>
                 </div>
+                <Button
+                  type="button"
+                  onClick={addColor}
+                  size="sm"
+                  className="mt-3"
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Color
+                </Button>
               </div>
             </div>
           </div>
           
           {/* Typography Section */}
-          <div className="space-y-4">
-            <h3 className="text-md font-medium">Typography</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-4 border rounded-md p-4">
-                <h4 className="text-sm font-medium">Headings</h4>
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="headingsFontFamily">Font Family</Label>
+          <div>
+            <h3 className="text-lg font-medium mb-4">Typography</h3>
+            <div className="space-y-4">
+              <div className="border rounded-md p-4">
+                <h4 className="text-sm font-medium mb-3">Headings</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="headingFont">Font Family</Label>
                     <Input
-                      id="headingsFontFamily"
-                      value={headingsFontFamily}
-                      onChange={(e) => setHeadingsFontFamily(e.target.value)}
+                      id="headingFont"
+                      value={typography.headings.fontFamily}
+                      onChange={(e) => handleTypographyChange("headings", "fontFamily", e.target.value)}
                       placeholder="Montserrat"
+                      className="mt-1"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="headingsWeights">Font Weights (comma-separated)</Label>
+                  <div>
+                    <Label htmlFor="headingWeights">Font Weights (comma separated)</Label>
                     <Input
-                      id="headingsWeights"
-                      value={headingsWeights.join(", ")}
-                      onChange={(e) => 
-                        setHeadingsWeights(
-                          e.target.value.split(",").map(w => w.trim()).filter(Boolean)
-                        )
-                      }
+                      id="headingWeights"
+                      value={typography.headings.weights.join(", ")}
+                      onChange={(e) => handleTypographyChange("headings", "weights", e.target.value.split(",").map(w => w.trim()))}
                       placeholder="600, 700"
+                      className="mt-1"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label>Font Sizes</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <Label htmlFor="h1Size" className="text-xs">H1</Label>
+                </div>
+                
+                <div className="mt-3">
+                  <Label>Heading Sizes</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-1">
+                    {["h1", "h2", "h3", "h4", "h5"].map((level) => (
+                      <div key={level}>
+                        <Label htmlFor={`size-${level}`} className="text-xs">{level.toUpperCase()}</Label>
                         <Input
-                          id="h1Size"
-                          value={headingsSizes.h1}
-                          onChange={(e) => 
-                            setHeadingsSizes({...headingsSizes, h1: e.target.value})
-                          }
-                          placeholder="2.5rem"
+                          id={`size-${level}`}
+                          value={typography.headings.sizes[level as keyof typeof typography.headings.sizes] || ""}
+                          onChange={(e) => handleHeadingSizeChange(level, e.target.value)}
+                          placeholder={level === "h1" ? "2.5rem" : level === "h2" ? "2rem" : level === "h3" ? "1.5rem" : level === "h4" ? "1.25rem" : "1rem"}
+                          className="mt-1"
                         />
                       </div>
-                      <div>
-                        <Label htmlFor="h2Size" className="text-xs">H2</Label>
-                        <Input
-                          id="h2Size"
-                          value={headingsSizes.h2}
-                          onChange={(e) => 
-                            setHeadingsSizes({...headingsSizes, h2: e.target.value})
-                          }
-                          placeholder="2rem"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="h3Size" className="text-xs">H3</Label>
-                        <Input
-                          id="h3Size"
-                          value={headingsSizes.h3}
-                          onChange={(e) => 
-                            setHeadingsSizes({...headingsSizes, h3: e.target.value})
-                          }
-                          placeholder="1.5rem"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="h4Size" className="text-xs">H4</Label>
-                        <Input
-                          id="h4Size"
-                          value={headingsSizes.h4}
-                          onChange={(e) => 
-                            setHeadingsSizes({...headingsSizes, h4: e.target.value})
-                          }
-                          placeholder="1.25rem"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="h5Size" className="text-xs">H5</Label>
-                        <Input
-                          id="h5Size"
-                          value={headingsSizes.h5}
-                          onChange={(e) => 
-                            setHeadingsSizes({...headingsSizes, h5: e.target.value})
-                          }
-                          placeholder="1rem"
-                        />
-                      </div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </div>
               
-              <div className="space-y-4 border rounded-md p-4">
-                <h4 className="text-sm font-medium">Body Text</h4>
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="bodyFontFamily">Font Family</Label>
+              <div className="border rounded-md p-4">
+                <h4 className="text-sm font-medium mb-3">Body Text</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="bodyFont">Font Family</Label>
                     <Input
-                      id="bodyFontFamily"
-                      value={bodyFontFamily}
-                      onChange={(e) => setBodyFontFamily(e.target.value)}
+                      id="bodyFont"
+                      value={typography.body.fontFamily}
+                      onChange={(e) => handleTypographyChange("body", "fontFamily", e.target.value)}
                       placeholder="Inter"
+                      className="mt-1"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="bodyWeights">Font Weights (comma-separated)</Label>
+                  <div>
+                    <Label htmlFor="bodyWeights">Font Weights (comma separated)</Label>
                     <Input
                       id="bodyWeights"
-                      value={bodyWeights.join(", ")}
-                      onChange={(e) => 
-                        setBodyWeights(
-                          e.target.value.split(",").map(w => w.trim()).filter(Boolean)
-                        )
-                      }
+                      value={typography.body.weights.join(", ")}
+                      onChange={(e) => handleTypographyChange("body", "weights", e.target.value.split(",").map(w => w.trim()))}
                       placeholder="400, 500"
+                      className="mt-1"
                     />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label htmlFor="bodySize">Font Size</Label>
-                      <Input
-                        id="bodySize"
-                        value={bodySize}
-                        onChange={(e) => setBodySize(e.target.value)}
-                        placeholder="1rem"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="bodyLineHeight">Line Height</Label>
-                      <Input
-                        id="bodyLineHeight"
-                        value={bodyLineHeight}
-                        onChange={(e) => setBodyLineHeight(e.target.value)}
-                        placeholder="1.5"
-                      />
-                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
           
-          {/* Logo Variations Section */}
-          <div className="space-y-4">
-            <h3 className="text-md font-medium">Logo Variations</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-4 border rounded-md p-4">
-                <h4 className="text-sm font-medium">Current Logos</h4>
-                <div className="space-y-3">
-                  {logoVariations.map((logo, index) => (
-                    <div key={index} className="flex items-center gap-3 group relative">
-                      <img 
-                        src={logo.url} 
-                        alt={logo.name} 
-                        className="w-12 h-12 object-contain border rounded"
-                      />
-                      <div>
-                        <p className="text-sm font-medium">{logo.name}</p>
-                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                          {logo.url}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => removeLogoVariation(index)}
-                        className="absolute right-0 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
+          {/* Logo Section */}
+          <div>
+            <h3 className="text-lg font-medium mb-4">Logo & Assets</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="border rounded-md p-4">
+                <h4 className="text-sm font-medium mb-2">Primary Logo</h4>
+                {logoUrl ? (
+                  <div className="mb-3">
+                    <img 
+                      src={logoUrl} 
+                      alt="Primary Logo" 
+                      className="max-w-full h-auto max-h-32 mx-auto"
+                    />
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-gray-200 rounded-md p-6 flex items-center justify-center mb-3">
+                    <p className="text-sm text-gray-400">No logo uploaded</p>
+                  </div>
+                )}
+                <label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e, 'logo')}
+                    disabled={isLoading}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={isLoading || uploadingType === 'logo'}
+                    asChild
+                  >
+                    <span>
+                      {uploadingType === 'logo' ? (
+                        "Uploading..."
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-1" />
+                          {logoUrl ? "Change Logo" : "Upload Logo"}
+                        </>
+                      )}
+                    </span>
+                  </Button>
+                </label>
               </div>
               
-              <div className="space-y-4 border rounded-md p-4">
-                <h4 className="text-sm font-medium">Add New Logo</h4>
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <Label htmlFor="logoName">Logo Name</Label>
-                    <Input
-                      id="logoName"
-                      value={newLogoName}
-                      onChange={(e) => setNewLogoName(e.target.value)}
-                      placeholder="Primary Logo"
+              <div className="border rounded-md p-4">
+                <h4 className="text-sm font-medium mb-2">Dark Mode Logo</h4>
+                {logoDarkUrl ? (
+                  <div className="mb-3 bg-gray-800 p-2 rounded">
+                    <img 
+                      src={logoDarkUrl} 
+                      alt="Dark Mode Logo" 
+                      className="max-w-full h-auto max-h-32 mx-auto"
                     />
                   </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="logoUrl">Logo URL</Label>
-                    <Input
-                      id="logoUrl"
-                      value={newLogoUrl}
-                      onChange={(e) => setNewLogoUrl(e.target.value)}
-                      placeholder="https://example.com/logo.png"
-                    />
+                ) : (
+                  <div className="border-2 border-dashed border-gray-200 rounded-md p-6 flex items-center justify-center mb-3 bg-gray-800">
+                    <p className="text-sm text-gray-400">No dark logo uploaded</p>
                   </div>
+                )}
+                <label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e, 'logo_dark')}
+                    disabled={isLoading}
+                  />
                   <Button
-                    onClick={addLogoVariation}
-                    className="w-full mt-2"
-                    disabled={!newLogoName || !newLogoUrl}
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={isLoading || uploadingType === 'logo_dark'}
+                    asChild
                   >
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Logo
+                    <span>
+                      {uploadingType === 'logo_dark' ? (
+                        "Uploading..."
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-1" />
+                          {logoDarkUrl ? "Change Logo" : "Upload Logo"}
+                        </>
+                      )}
+                    </span>
                   </Button>
-                </div>
+                </label>
+              </div>
+              
+              <div className="border rounded-md p-4">
+                <h4 className="text-sm font-medium mb-2">Icon / Favicon</h4>
+                {iconUrl ? (
+                  <div className="mb-3 flex items-center justify-center">
+                    <img 
+                      src={iconUrl} 
+                      alt="Icon" 
+                      className="max-w-full h-auto max-h-32 mx-auto"
+                    />
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-gray-200 rounded-md p-6 flex items-center justify-center mb-3">
+                    <p className="text-sm text-gray-400">No icon uploaded</p>
+                  </div>
+                )}
+                <label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e, 'icon')}
+                    disabled={isLoading}
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={isLoading || uploadingType === 'icon'}
+                    asChild
+                  >
+                    <span>
+                      {uploadingType === 'icon' ? (
+                        "Uploading..."
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-1" />
+                          {iconUrl ? "Change Icon" : "Upload Icon"}
+                        </>
+                      )}
+                    </span>
+                  </Button>
+                </label>
               </div>
             </div>
-          </div>
-          
-          {/* Brand Guidelines Section */}
-          <div className="space-y-4">
-            <h3 className="text-md font-medium">Brand Guidelines</h3>
-            <div className="border rounded-md p-4">
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label htmlFor="brandGuidelines">Brand Guidelines PDF</Label>
-                  <Input
-                    id="brandGuidelines"
-                    value={brandGuidelines}
-                    onChange={(e) => setBrandGuidelines(e.target.value)}
-                    placeholder="brand-guidelines.pdf"
+            
+            <div className="mt-4 border rounded-md p-4">
+              <h4 className="text-sm font-medium mb-3">Additional Brand Assets</h4>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                {assets.map((asset, index) => (
+                  <div key={index} className="border rounded-md p-2 relative">
+                    <button
+                      type="button"
+                      onClick={() => removeAsset(index)}
+                      className="absolute top-1 right-1 bg-white rounded-full p-0.5 text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                    <img 
+                      src={asset} 
+                      alt={`Asset ${index + 1}`} 
+                      className="max-w-full h-auto max-h-24 mx-auto"
+                    />
+                  </div>
+                ))}
+                <label className="border-2 border-dashed border-gray-200 rounded-md p-4 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => handleFileUpload(e, 'asset')}
+                    disabled={isLoading}
                   />
-                </div>
-                <Button variant="outline" className="w-full">
-                  <Upload className="h-4 w-4 mr-1" />
-                  Upload Guidelines PDF
-                </Button>
+                  <Plus className="h-6 w-6 text-gray-400 mb-1" />
+                  <span className="text-xs text-gray-500">Add Asset</span>
+                </label>
               </div>
             </div>
           </div>
@@ -526,10 +573,13 @@ export function EditBrandingModal({
           <Button
             variant="outline"
             onClick={() => onOpenChange && onOpenChange(false)}
+            disabled={isLoading}
           >
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button onClick={handleSave} disabled={isLoading}>
+            {isLoading ? "Saving..." : "Save Changes"}
+          </Button>
         </div>
       </div>
     </div>

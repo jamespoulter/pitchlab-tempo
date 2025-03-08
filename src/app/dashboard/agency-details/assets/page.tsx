@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -10,129 +13,200 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Upload,
+  FileText,
+  Image,
+  Video,
+  File,
+  X,
   Search,
   Filter,
-  Briefcase,
-  Image as ImageIcon,
-  FileText,
-  Edit,
-  Trash,
-  Download,
   Plus,
-  FolderOpen,
+  Trash2,
+  Edit,
+  Download,
+  Loader2,
 } from "lucide-react";
+import { AgencyAsset } from "@/types/agency";
+import { getAgencyAssets, uploadAgencyAssetFile, createAgencyAsset, deleteAgencyAsset } from "@/utils/supabase-client";
+import { toast } from "sonner";
 
 export default function AgencyAssetsPage() {
-  // This would normally fetch real data from the database
-  const assets = [
-    {
-      id: 1,
-      name: "Office Exterior.jpg",
-      type: "image",
-      size: "2.4 MB",
-      preview:
-        "https://images.unsplash.com/photo-1497366754035-f200968a6e72?w=800&q=80",
-      category: "Office",
-      uploadedAt: "2023-09-15",
-    },
-    {
-      id: 2,
-      name: "Team Photo.jpg",
-      type: "image",
-      size: "3.1 MB",
-      preview:
-        "https://images.unsplash.com/photo-1522071820081-009f0129c71c?w=800&q=80",
-      category: "Team",
-      uploadedAt: "2023-09-10",
-    },
-    {
-      id: 3,
-      name: "Company Overview.pdf",
-      type: "document",
-      size: "1.8 MB",
-      category: "Documents",
-      uploadedAt: "2023-08-22",
-    },
-    {
-      id: 4,
-      name: "Agency Capabilities.pdf",
-      type: "document",
-      size: "2.2 MB",
-      category: "Documents",
-      uploadedAt: "2023-08-15",
-    },
-    {
-      id: 5,
-      name: "Office Interior.jpg",
-      type: "image",
-      size: "1.9 MB",
-      preview:
-        "https://images.unsplash.com/photo-1604328698692-f76ea9498e76?w=800&q=80",
-      category: "Office",
-      uploadedAt: "2023-07-30",
-    },
-    {
-      id: 6,
-      name: "Brand Guidelines.pdf",
-      type: "document",
-      size: "4.5 MB",
-      category: "Branding",
-      uploadedAt: "2023-07-15",
-    },
-    {
-      id: 7,
-      name: "Client Meeting.jpg",
-      type: "image",
-      size: "2.8 MB",
-      preview:
-        "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&q=80",
-      category: "Meetings",
-      uploadedAt: "2023-06-28",
-    },
-    {
-      id: 8,
-      name: "Project Workflow.pdf",
-      type: "document",
-      size: "3.2 MB",
-      category: "Processes",
-      uploadedAt: "2023-06-15",
-    },
-    {
-      id: 9,
-      name: "Design Process.jpg",
-      type: "image",
-      size: "2.1 MB",
-      preview:
-        "https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?w=800&q=80",
-      category: "Processes",
-      uploadedAt: "2023-05-20",
-    },
-  ];
+  const [assets, setAssets] = useState<AgencyAsset[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUploading, setIsUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<string | null>(null);
+  
+  // Fetch agency assets
+  useEffect(() => {
+    const fetchAgencyAssets = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getAgencyAssets();
+        console.log("Fetched agency assets:", data);
+        setAssets(data);
+      } catch (error) {
+        console.error("Error fetching agency assets:", error);
+        toast.error("Failed to load agency assets");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchAgencyAssets();
+  }, []);
+  
+  // Handle file upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit
+      toast.error("File size exceeds 10MB limit");
+      return;
+    }
+    
+    try {
+      setIsUploading(true);
+      
+      // Upload the file to storage
+      const { success, url, fileInfo, error } = await uploadAgencyAssetFile(file);
+      
+      if (!success || !url || !fileInfo) {
+        console.error("Error uploading file:", error);
+        toast.error("Failed to upload file");
+        return;
+      }
+      
+      // Determine file type
+      let fileType: 'image' | 'document' | 'video' | 'other' = 'other';
+      if (file.type.startsWith('image/')) {
+        fileType = 'image';
+      } else if (file.type.startsWith('video/')) {
+        fileType = 'video';
+      } else if (
+        file.type === 'application/pdf' ||
+        file.type === 'application/msword' ||
+        file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+        file.type === 'application/vnd.ms-excel' ||
+        file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' ||
+        file.type === 'application/vnd.ms-powerpoint' ||
+        file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' ||
+        file.type === 'text/plain'
+      ) {
+        fileType = 'document';
+      }
+      
+      // Create asset record in database
+      const assetData = {
+        name: file.name,
+        file_url: url,
+        file_type: fileType,
+        file_size: fileInfo.size,
+        mime_type: fileInfo.type,
+        description: "",
+        tags: []
+      };
+      
+      const { success: createSuccess, data: newAsset, error: createError } = await createAgencyAsset(assetData);
+      
+      if (!createSuccess || !newAsset) {
+        console.error("Error creating asset record:", createError);
+        toast.error("Failed to create asset record");
+        return;
+      }
+      
+      // Update the assets list
+      setAssets(prevAssets => [newAsset, ...prevAssets]);
+      
+      toast.success("Asset uploaded successfully");
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      toast.error("An unexpected error occurred");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+  
+  // Handle asset deletion
+  const handleDeleteAsset = async (assetId: string) => {
+    if (!confirm("Are you sure you want to delete this asset?")) {
+      return;
+    }
+    
+    try {
+      const { success, error } = await deleteAgencyAsset(assetId);
+      
+      if (!success) {
+        console.error("Error deleting asset:", error);
+        toast.error("Failed to delete asset");
+        return;
+      }
+      
+      // Update the assets list
+      setAssets(prevAssets => prevAssets.filter(asset => asset.id !== assetId));
+      
+      toast.success("Asset deleted successfully");
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      toast.error("An unexpected error occurred");
+    }
+  };
+  
+  // Filter and search assets
+  const filteredAssets = assets.filter(asset => {
+    // Apply type filter
+    if (filterType && asset.file_type !== filterType) {
+      return false;
+    }
+    
+    // Apply search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        asset.name.toLowerCase().includes(query) ||
+        (asset.description && asset.description.toLowerCase().includes(query)) ||
+        (asset.tags && asset.tags.some(tag => tag.toLowerCase().includes(query)))
+      );
+    }
+    
+    return true;
+  });
+  
+  // Get icon based on file type
+  const getFileIcon = (fileType: string) => {
+    switch (fileType) {
+      case 'image':
+        return <Image className="h-6 w-6 text-blue-500" />;
+      case 'document':
+        return <FileText className="h-6 w-6 text-green-500" />;
+      case 'video':
+        return <Video className="h-6 w-6 text-purple-500" />;
+      default:
+        return <File className="h-6 w-6 text-gray-500" />;
+    }
+  };
+  
+  // Format file size
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return "Unknown size";
+    
+    if (bytes < 1024) {
+      return `${bytes} B`;
+    } else if (bytes < 1024 * 1024) {
+      return `${(bytes / 1024).toFixed(1)} KB`;
+    } else {
+      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+  };
 
-  const categories = [
-    { name: "All Assets", count: assets.length },
-    {
-      name: "Office",
-      count: assets.filter((a) => a.category === "Office").length,
-    },
-    { name: "Team", count: assets.filter((a) => a.category === "Team").length },
-    {
-      name: "Documents",
-      count: assets.filter((a) => a.category === "Documents").length,
-    },
-    {
-      name: "Branding",
-      count: assets.filter((a) => a.category === "Branding").length,
-    },
-    {
-      name: "Meetings",
-      count: assets.filter((a) => a.category === "Meetings").length,
-    },
-    {
-      name: "Processes",
-      count: assets.filter((a) => a.category === "Processes").length,
-    },
-  ];
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -140,234 +214,178 @@ export default function AgencyAssetsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Agency Assets</h1>
           <p className="text-muted-foreground mt-1">
-            Manage images, documents, and other files to use in proposals.
+            Manage your agency's images, documents, and other files.
           </p>
         </div>
-        <Button className="flex items-center gap-2">
-          <Upload className="h-4 w-4" />
-          <span>Upload Assets</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <label>
+            <input
+              type="file"
+              className="hidden"
+              onChange={handleFileUpload}
+              disabled={isUploading}
+            />
+            <Button 
+              variant="default" 
+              className="gap-1"
+              disabled={isUploading}
+              asChild
+            >
+              <span>
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4" />
+                    <span>Upload Asset</span>
+                  </>
+                )}
+              </span>
+            </Button>
+          </label>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Categories</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {categories.map((category, index) => (
-                <div
-                  key={index}
-                  className={`flex items-center justify-between p-2 rounded-md hover:bg-gray-100 cursor-pointer transition-colors ${index === 0 ? "bg-blue-50 text-blue-700" : ""}`}
-                >
-                  <div className="flex items-center gap-2">
-                    <FolderOpen className="h-4 w-4" />
-                    <span className="text-sm">{category.name}</span>
-                  </div>
-                  <span className="text-xs bg-gray-100 px-2 py-0.5 rounded-full">
-                    {category.count}
-                  </span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload New Asset</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border-2 border-dashed rounded-md p-6 flex flex-col items-center justify-center text-center">
-                <Upload className="h-8 w-8 text-gray-400 mb-2" />
-                <p className="text-sm font-medium">Drag & drop files here</p>
-                <p className="text-xs text-muted-foreground mt-1 mb-4">
-                  Or click to browse your files
-                </p>
-                <Button size="sm">
-                  <Upload className="h-4 w-4 mr-1" />
-                  Browse Files
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="asset-category">Category</Label>
-                <select
-                  id="asset-category"
-                  className="w-full h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
-                >
-                  <option value="">Select a category</option>
-                  {categories.slice(1).map((category, index) => (
-                    <option key={index} value={category.name}>
-                      {category.name}
-                    </option>
-                  ))}
-                  <option value="new">+ Create New Category</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="flex flex-col md:flex-row gap-4 items-center">
+        <div className="relative w-full md:w-96">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search assets..."
+            className="pl-8"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
+        <div className="flex gap-2">
+          <Button
+            variant={filterType === null ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterType(null)}
+          >
+            All
+          </Button>
+          <Button
+            variant={filterType === "image" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterType("image")}
+          >
+            <Image className="h-4 w-4 mr-1" />
+            Images
+          </Button>
+          <Button
+            variant={filterType === "document" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterType("document")}
+          >
+            <FileText className="h-4 w-4 mr-1" />
+            Documents
+          </Button>
+          <Button
+            variant={filterType === "video" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterType("video")}
+          >
+            <Video className="h-4 w-4 mr-1" />
+            Videos
+          </Button>
+          <Button
+            variant={filterType === "other" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setFilterType("other")}
+          >
+            <File className="h-4 w-4 mr-1" />
+            Other
+          </Button>
+        </div>
+      </div>
 
-        <div className="md:col-span-3 space-y-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <input
-                      type="search"
-                      placeholder="Search assets..."
-                      className="pl-8 h-9 w-full md:w-[300px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
-                    />
-                  </div>
-                  <Button variant="outline" size="sm" className="h-9">
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filter
-                  </Button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <select className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors">
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="a-z">A-Z</option>
-                    <option value="z-a">Z-A</option>
-                    <option value="size">Size</option>
-                  </select>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {assets.map((asset) => (
-                  <div
-                    key={asset.id}
-                    className="border rounded-md overflow-hidden group hover:shadow-sm transition-all"
-                  >
-                    {asset.type === "image" ? (
-                      <div className="aspect-video w-full overflow-hidden bg-gray-100">
-                        <img
-                          src={asset.preview}
-                          alt={asset.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="aspect-video w-full flex items-center justify-center bg-gray-100">
-                        <div className="p-4 bg-white rounded-md shadow-sm">
-                          <FileText className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                          <p className="text-xs text-center font-medium">
-                            {asset.name.split(".").pop()?.toUpperCase()}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    <div className="p-3">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-medium truncate text-sm">
-                          {asset.name}
-                        </p>
-                        <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded text-gray-600">
-                          {asset.category}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground">
-                          {asset.size} •{" "}
-                          {new Date(asset.uploadedAt).toLocaleDateString()}
-                        </p>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0"
-                          >
-                            <Edit className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
-                          >
-                            <Trash className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                <div className="border rounded-md overflow-hidden border-dashed flex items-center justify-center p-8 h-full aspect-video">
-                  <div className="text-center">
-                    <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm font-medium">Upload New Asset</p>
-                    <p className="text-xs text-muted-foreground mt-1 mb-3">
-                      Drag & drop or click to browse
+      {filteredAssets.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <File className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">No assets found</h3>
+            <p className="text-muted-foreground text-center max-w-md mb-6">
+              {assets.length === 0
+                ? "You haven't uploaded any assets yet. Upload your first asset to get started."
+                : "No assets match your search criteria. Try adjusting your filters or search query."}
+            </p>
+            {assets.length === 0 && (
+              <label>
+                <input
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileUpload}
+                  disabled={isUploading}
+                />
+                <Button asChild>
+                  <span>
+                    <Upload className="h-4 w-4 mr-1" />
+                    Upload Your First Asset
+                  </span>
+                </Button>
+              </label>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredAssets.map((asset) => (
+            <Card key={asset.id} className="overflow-hidden">
+              <div className="aspect-video w-full bg-gray-100 flex items-center justify-center">
+                {asset.file_type === "image" ? (
+                  <img
+                    src={asset.file_url}
+                    alt={asset.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="p-6 bg-white rounded-md shadow-sm">
+                    {getFileIcon(asset.file_type)}
+                    <p className="text-xs text-center font-medium mt-2">
+                      {asset.mime_type?.split("/").pop()?.toUpperCase() || asset.file_type.toUpperCase()}
                     </p>
-                    <Button size="sm">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Asset
+                  </div>
+                )}
+              </div>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium text-sm truncate" title={asset.name}>
+                      {asset.name}
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      {formatFileSize(asset.file_size)}
+                    </p>
+                  </div>
+                  <div className="flex gap-1 ml-2">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      asChild
+                    >
+                      <a href={asset.file_url} target="_blank" rel="noopener noreferrer" download>
+                        <Download className="h-4 w-4" />
+                      </a>
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={() => asset.id && handleDeleteAsset(asset.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Recently Used Assets</CardTitle>
-              <CardDescription>
-                Assets you've recently included in proposals
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {assets.slice(0, 4).map((asset) => (
-                  <div
-                    key={asset.id}
-                    className="border rounded-md overflow-hidden group hover:shadow-sm transition-all"
-                  >
-                    {asset.type === "image" ? (
-                      <div className="aspect-square w-full overflow-hidden bg-gray-100">
-                        <img
-                          src={asset.preview}
-                          alt={asset.name}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="aspect-square w-full flex items-center justify-center bg-gray-100">
-                        <div className="p-4 bg-white rounded-md shadow-sm">
-                          <FileText className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                          <p className="text-xs text-center font-medium">
-                            {asset.name.split(".").pop()?.toUpperCase()}
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                    <div className="p-2">
-                      <p className="font-medium truncate text-xs">
-                        {asset.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Used 3 days ago
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }
