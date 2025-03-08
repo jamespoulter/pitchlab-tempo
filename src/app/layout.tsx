@@ -1,21 +1,31 @@
 import { TempoInit } from "./tempo-init";
 import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import { Inter, Montserrat, Work_Sans } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 
-// Body font
+// Body font - Inter with weights 500, 600 for UI elements
 const inter = Inter({ 
   subsets: ["latin"],
   variable: '--font-inter',
   display: 'swap',
+  weight: ['500', '600'],
 });
 
-// Heading font - more modern and edgy
-const outfit = Outfit({
+// Primary heading font - Montserrat with weights 400, 600, 700
+const montserrat = Montserrat({
   subsets: ["latin"],
-  variable: '--font-outfit',
+  variable: '--font-montserrat',
   display: 'swap',
+  weight: ['400', '600', '700'],
+});
+
+// Alternative heading font - Work Sans with weights 400, 600, 700
+const workSans = Work_Sans({
+  subsets: ["latin"],
+  variable: '--font-work-sans',
+  display: 'swap',
+  weight: ['400', '600', '700'],
 });
 
 export const metadata: Metadata = {
@@ -29,7 +39,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${outfit.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${montserrat.variable} ${workSans.variable}`}>
       <Script src="https://api.tempolabs.ai/proxy-asset?url=https://storage.googleapis.com/tempo-public-assets/error-handling.js" />
       <body className={inter.className}>
         {children}

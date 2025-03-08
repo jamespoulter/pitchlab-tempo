@@ -4,58 +4,130 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 221 83% 53%;
+    /* Base colors */
+    --background: 0 0% 100%; /* #FFFFFF - Pure White */
+    --foreground: 220 3% 18%; /* #2C2D2F - Charcoal */
+    
+    /* Card and container colors */
+    --card: 0 0% 100%; /* #FFFFFF - Pure White */
+    --card-foreground: 220 3% 18%; /* #2C2D2F - Charcoal */
+    
+    /* Popover colors */
+    --popover: 0 0% 100%; /* #FFFFFF - Pure White */
+    --popover-foreground: 220 3% 18%; /* #2C2D2F - Charcoal */
+    
+    /* Primary colors - Knicks Blue */
+    --primary: 204 100% 36%; /* #006BB6 - Knicks Blue */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Secondary colors - Silver */
+    --secondary: 220 3% 76%; /* #BEC0C2 - Silver */
+    --secondary-foreground: 220 3% 18%; /* #2C2D2F - Charcoal */
+    
+    /* Accent colors - Knicks Orange */
+    --accent: 28 90% 55%; /* #F58426 - Knicks Orange */
+    --accent-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Muted colors */
+    --muted: 210 20% 92%; /* #E5E7EB - Light Gray */
+    --muted-foreground: 220 3% 40%; /* Muted Charcoal */
+    
+    /* Destructive colors */
+    --destructive: 0 84% 60%; /* #EF4444 - Error Red */
+    --destructive-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Success colors */
+    --success: 142 70% 45%; /* #22C55E - Success Green */
+    --success-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Warning colors */
+    --warning: 48 96% 53%; /* #FACC15 - Warning Yellow */
+    --warning-foreground: 220 3% 18%; /* #2C2D2F - Charcoal */
+    
+    /* Error colors */
+    --error: 0 84% 60%; /* #EF4444 - Error Red */
+    --error-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Info colors */
+    --info: 217 91% 60%; /* #3B82F6 - Info Blue */
+    --info-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Border and input colors */
+    --border: 220 3% 76%; /* #BEC0C2 - Silver */
+    --input: 220 3% 76%; /* #BEC0C2 - Silver */
+    --ring: 204 100% 36%; /* #006BB6 - Knicks Blue */
+    
+    /* Border radius */
     --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
+    
+    /* Chart colors */
+    --chart-1: 204 100% 36%; /* #006BB6 - Knicks Blue */
+    --chart-2: 28 90% 55%; /* #F58426 - Knicks Orange */
+    --chart-3: 142 70% 45%; /* #22C55E - Success Green */
+    --chart-4: 48 96% 53%; /* #FACC15 - Warning Yellow */
+    --chart-5: 220 3% 76%; /* #BEC0C2 - Silver */
   }
 
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 217 91% 60%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 14.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 217 91% 60%;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    /* Base colors */
+    --background: 0 0% 7%; /* #121212 - Background Dark */
+    --foreground: 0 0% 90%; /* #E5E7EB - Text Light */
+    
+    /* Card and container colors */
+    --card: 0 0% 12%; /* #1E1E1E - Surface Dark */
+    --card-foreground: 0 0% 90%; /* #E5E7EB - Text Light */
+    
+    /* Popover colors */
+    --popover: 0 0% 12%; /* #1E1E1E - Surface Dark */
+    --popover-foreground: 0 0% 90%; /* #E5E7EB - Text Light */
+    
+    /* Primary colors - Knicks Blue (lighter for dark mode) */
+    --primary: 204 100% 45%; /* Brighter Knicks Blue for dark mode */
+    --primary-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Secondary colors */
+    --secondary: 0 0% 18%; /* #2D2D2D - Element Dark */
+    --secondary-foreground: 0 0% 90%; /* #E5E7EB - Text Light */
+    
+    /* Accent colors - Knicks Orange (brighter for dark mode) */
+    --accent: 28 90% 60%; /* Brighter Knicks Orange for dark mode */
+    --accent-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Muted colors */
+    --muted: 0 0% 18%; /* #2D2D2D - Element Dark */
+    --muted-foreground: 0 0% 65%; /* Lighter muted text for dark mode */
+    
+    /* Destructive colors */
+    --destructive: 0 84% 50%; /* Darker error */
+    --destructive-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Success colors */
+    --success: 142 70% 40%; /* Darker success */
+    --success-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Warning colors */
+    --warning: 48 96% 48%; /* Darker warning */
+    --warning-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Error colors */
+    --error: 0 84% 50%; /* Darker error */
+    --error-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Info colors */
+    --info: 217 91% 55%; /* Darker info */
+    --info-foreground: 0 0% 100%; /* #FFFFFF - Pure White */
+    
+    /* Border and input colors */
+    --border: 0 0% 18%; /* #2D2D2D - Element Dark */
+    --input: 0 0% 18%; /* #2D2D2D - Element Dark */
+    --ring: 204 100% 45%; /* Brighter Knicks Blue for dark mode */
+    
+    /* Chart colors - adjusted for dark mode */
+    --chart-1: 204 100% 45%; /* Brighter Knicks Blue */
+    --chart-2: 28 90% 60%; /* Brighter Knicks Orange */
+    --chart-3: 142 70% 40%; /* Darker success */
+    --chart-4: 48 96% 48%; /* Darker warning */
+    --chart-5: 0 0% 65%; /* Lighter gray */
   }
 }
 
@@ -63,13 +135,168 @@
   * {
     @apply border-border;
   }
+  
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-inter);
+    font-size: 14px;
+    line-height: 1.5;
   }
+  
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-outfit);
-    letter-spacing: -0.025em;
+    font-family: var(--font-montserrat);
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+  }
+  
+  h1 {
+    @apply text-4xl font-bold;
+  }
+  
+  h2 {
+    @apply text-3xl font-bold;
+  }
+  
+  h3 {
+    @apply text-2xl font-semibold;
+  }
+  
+  h4 {
+    @apply text-xl font-semibold;
+  }
+  
+  h5 {
+    @apply text-lg font-semibold;
+  }
+  
+  h6 {
+    @apply text-base font-semibold;
+  }
+  
+  p {
+    margin-bottom: 1rem;
+    letter-spacing: normal;
+  }
+  
+  a {
+    @apply text-primary hover:text-primary/80 transition-colors duration-200;
+  }
+}
+
+/* Component Styles */
+@layer components {
+  /* Card styles */
+  .card {
+    @apply bg-card text-card-foreground rounded-lg border border-border shadow-card transition-shadow duration-200 hover:shadow-card-hover;
+  }
+  
+  /* Button styles */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-4 py-2 font-medium transition-colors duration-200 shadow-button;
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80 rounded-md px-4 py-2 font-medium transition-colors duration-200 shadow-button;
+  }
+  
+  .btn-accent {
+    @apply bg-accent text-accent-foreground hover:bg-accent/90 rounded-md px-4 py-2 font-medium transition-colors duration-200 shadow-button;
+  }
+  
+  .btn-outline {
+    @apply border border-input bg-background hover:bg-secondary hover:text-secondary-foreground rounded-md px-4 py-2 font-medium transition-colors duration-200;
+  }
+  
+  .btn-ghost {
+    @apply hover:bg-secondary/50 text-foreground rounded-md px-4 py-2 font-medium transition-colors duration-200;
+  }
+  
+  .btn-destructive {
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-md px-4 py-2 font-medium transition-colors duration-200 shadow-button;
+  }
+  
+  /* Form element styles */
+  .input {
+    @apply border border-input bg-background px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-shadow duration-200;
+  }
+  
+  .select {
+    @apply border border-input bg-background px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 transition-shadow duration-200;
+  }
+  
+  .checkbox {
+    @apply h-4 w-4 rounded border-input text-primary focus:ring-ring transition-colors duration-200;
+  }
+  
+  /* Status indicators */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors duration-200;
+  }
+  
+  .badge-primary {
+    @apply bg-primary/10 text-primary;
+  }
+  
+  .badge-secondary {
+    @apply bg-secondary text-secondary-foreground;
+  }
+  
+  .badge-accent {
+    @apply bg-accent/10 text-accent;
+  }
+  
+  .badge-success {
+    @apply bg-success/10 text-success;
+  }
+  
+  .badge-warning {
+    @apply bg-warning/10 text-warning;
+  }
+  
+  .badge-error {
+    @apply bg-error/10 text-error;
+  }
+  
+  .badge-info {
+    @apply bg-info/10 text-info;
+  }
+  
+  /* Table styles */
+  .table {
+    @apply w-full text-sm;
+  }
+  
+  .table th {
+    @apply px-4 py-3 text-left font-medium text-muted-foreground border-b;
+  }
+  
+  .table td {
+    @apply px-4 py-3 border-b border-border;
+  }
+  
+  .table tr:hover {
+    @apply bg-muted/50;
+  }
+  
+  /* Header styles */
+  .header {
+    @apply bg-gradient-header text-white py-4;
+  }
+  
+  /* Navigation styles */
+  .nav-item {
+    @apply px-4 py-2 text-sm font-medium transition-colors duration-200;
+  }
+  
+  .nav-item-active {
+    @apply bg-primary/10 text-primary rounded-md;
+  }
+  
+  /* Footer styles */
+  .footer {
+    @apply bg-navy text-white py-8;
   }
 }
 

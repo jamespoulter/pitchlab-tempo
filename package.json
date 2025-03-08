@@ -37,6 +37,7 @@
     "react-dom": "^18",
     "react-hook-form": "^7.54.2",
     "react-resizable-panels": "^2.1.7",
+    "sonner": "^2.0.1",
     "stripe": "^17.6.0",
     "supabase": "^2.15.8",
     "tempo-devtools": "^2.0.94",

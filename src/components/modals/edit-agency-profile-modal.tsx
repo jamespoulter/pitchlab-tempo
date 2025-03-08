@@ -6,12 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, X } from "lucide-react";
+import { AgencyProfile, AgencyProfileFormData } from "@/types/agency";
+import { upsertAgencyProfile } from "@/utils/supabase-client";
+import { toast } from "sonner";
 
 interface EditAgencyProfileModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  onSave?: (agencyProfile: any) => void;
-  initialData?: any;
+  onSave?: (agencyProfile: AgencyProfile) => void;
+  initialData?: Partial<AgencyProfile>;
 }
 
 export function EditAgencyProfileModal({
@@ -32,6 +35,7 @@ export function EditAgencyProfileModal({
   const [newIndustry, setNewIndustry] = useState("");
   const [mission, setMission] = useState(initialData.mission || "");
   const [vision, setVision] = useState(initialData.vision || "");
+  const [isLoading, setIsLoading] = useState(false);
 
   const addIndustry = () => {
     if (newIndustry.trim()) {
@@ -44,27 +48,45 @@ export function EditAgencyProfileModal({
     setIndustries(industries.filter((_, i) => i !== index));
   };
 
-  const handleSave = () => {
-    const updatedProfile = {
-      name,
-      email,
-      phone,
-      website,
-      address,
-      description,
-      founded,
-      employees,
-      industries,
-      mission,
-      vision,
-    };
+  const handleSave = async () => {
+    setIsLoading(true);
     
-    if (onSave) {
-      onSave(updatedProfile);
-    }
-    
-    if (onOpenChange) {
-      onOpenChange(false);
+    try {
+      const profileData: AgencyProfileFormData = {
+        name,
+        email,
+        phone,
+        website,
+        address,
+        description,
+        founded,
+        employees,
+        industries,
+        mission,
+        vision,
+      };
+      
+      const { success, data, error } = await upsertAgencyProfile(profileData);
+      
+      if (success && data) {
+        toast.success("Agency profile saved successfully");
+        
+        if (onSave) {
+          onSave(data);
+        }
+        
+        if (onOpenChange) {
+          onOpenChange(false);
+        }
+      } else {
+        toast.error("Failed to save agency profile");
+        console.error("Error saving agency profile:", error);
+      }
+    } catch (error) {
+      toast.error("An unexpected error occurred");
+      console.error("Error in handleSave:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -247,10 +269,13 @@ export function EditAgencyProfileModal({
           <Button
             variant="outline"
             onClick={() => onOpenChange && onOpenChange(false)}
+            disabled={isLoading}
           >
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save Changes</Button>
+          <Button onClick={handleSave} disabled={isLoading}>
+            {isLoading ? "Saving..." : "Save Changes"}
+          </Button>
         </div>
       </div>
     </div>
