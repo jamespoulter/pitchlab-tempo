@@ -10,16 +10,22 @@ export default function Hero() {
       <div className="relative pt-24 pb-32 sm:pt-32 sm:pb-40">
         <div className="container mx-auto px-4">
           <div className="text-center max-w-4xl mx-auto">
-            <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-8 tracking-tight">
-              Build{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
-                Faster
+            <div className="mb-6">
+              <span className="inline-block px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+                New: Pitchhub Premium with 7-day free trial
               </span>
-              {" "}with Our Next-Gen Platform
+            </div>
+            
+            <h1 className="text-5xl sm:text-6xl font-bold text-gray-900 mb-8 tracking-tight">
+              Create{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600">
+                Winning
+              </span>
+              {" "}Pitches Effortlessly
             </h1>
             
             <p className="text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
-              Empower your team with our cutting-edge solution. Join industry leaders who've already transformed their workflow.
+              Empower your team with our premium pitch creation platform. Join industry leaders who've already transformed their pitch workflow.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
@@ -46,7 +52,7 @@ export default function Hero() {
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-500" />
-                <span>14-day free trial</span>
+                <span>7-day free trial</span>
               </div>
               <div className="flex items-center gap-2">
                 <Check className="w-5 h-5 text-green-500" />

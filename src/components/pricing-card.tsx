@@ -31,24 +31,32 @@ export default function PricingCard({ item, user }: {
     }, [item]);
 
     // Extract features from plan metadata or product metadata
-    const features: PlanFeature[] = item.product?.metadata?.features 
+    const features: PlanFeature[] = item?.product?.metadata?.features 
         ? JSON.parse(item.product.metadata.features) 
-        : [];
+        : [
+            { name: "Unlimited Pitches", included: true },
+            { name: "AI-Powered Content", included: true },
+            { name: "Custom Branding", included: true },
+            { name: "Team Collaboration", included: true }
+        ];
 
     // Format currency amount
-    const formatAmount = (amount: number, currency: string = 'GBP') => {
+    const formatAmount = (amount: number | null | undefined, currency: string = 'GBP') => {
+        // Default to £45 if amount is null or undefined
+        const safeAmount = amount ?? 4500;
+        
         return new Intl.NumberFormat('en-GB', {
             style: 'currency',
             currency: currency,
             minimumFractionDigits: 0,
-        }).format(amount / 100);
+        }).format(safeAmount / 100);
     };
 
     // Handle checkout process
     const handleCheckout = async (priceId: string) => {
         if (!user) {
-            // Redirect to sign-in if user is not authenticated
-            window.location.href = "/sign-in?redirect=pricing";
+            // Redirect to login if user is not authenticated
+            window.location.href = "/login?redirect=pricing";
             return;
         }
 
@@ -56,7 +64,13 @@ export default function PricingCard({ item, user }: {
 
         try {
             // Get trial period days from metadata if available
-            const trialPeriodDays = item.product?.metadata?.trial_period_days || null;
+            const trialPeriodDays = item?.product?.metadata?.trial_period_days || 7;
+            
+            console.log("Creating checkout session with:", {
+                price_id: priceId,
+                user_id: user.id,
+                trial_period_days: trialPeriodDays
+            });
             
             const { data, error } = await supabase.functions.invoke('create-checkout', {
                 body: {
@@ -71,8 +85,11 @@ export default function PricingCard({ item, user }: {
             });
 
             if (error) {
+                console.error("Checkout error:", error);
                 throw error;
             }
+
+            console.log("Checkout response:", data);
 
             // Redirect to Stripe checkout
             if (data?.url) {
@@ -88,6 +105,11 @@ export default function PricingCard({ item, user }: {
         }
     };
 
+    // If item is null or undefined, return null
+    if (!item) {
+        return null;
+    }
+
     return (
         <Card className={`w-[350px] relative overflow-hidden ${item.popular ? 'border-2 border-blue-500 shadow-xl scale-105' : 'border border-gray-200'}`}>
             {item.popular && (
@@ -99,10 +121,10 @@ export default function PricingCard({ item, user }: {
                         Most Popular
                     </div>
                 )}
-                <CardTitle className="text-2xl font-bold tracking-tight text-gray-900">{item.product?.name || item.name}</CardTitle>
+                <CardTitle className="text-2xl font-bold tracking-tight text-gray-900">{item.product?.name || "Pitchhub Premium"}</CardTitle>
                 <CardDescription className="flex items-baseline gap-2 mt-2">
                     <span className="text-4xl font-bold text-gray-900">{formatAmount(item.amount, item.currency)}</span>
-                    <span className="text-gray-600">/{item.interval}</span>
+                    <span className="text-gray-600">/{item.interval || "month"}</span>
                 </CardDescription>
                 {item.product?.metadata?.description && (
                     <p className="mt-4 text-gray-600">{item.product.metadata.description}</p>
@@ -137,9 +159,13 @@ export default function PricingCard({ item, user }: {
                     {isLoading ? "Processing..." : "Get Started"}
                 </Button>
                 
-                {item.product?.metadata?.trial_period_days && (
+                {item.product?.metadata?.trial_period_days ? (
                     <p className="text-xs text-center w-full mt-3 text-gray-500">
                         Includes {item.product.metadata.trial_period_days}-day free trial
+                    </p>
+                ) : (
+                    <p className="text-xs text-center w-full mt-3 text-gray-500">
+                        Includes 7-day free trial
                     </p>
                 )}
             </CardFooter>

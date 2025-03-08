@@ -13,6 +13,7 @@ import {
   Sparkles, 
   Presentation 
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -32,22 +33,31 @@ export default async function Home() {
   
   // Debug the plans data
   console.log("All plans from Stripe:", allPlans);
+  console.log("Error from get-plans function:", error);
+  
+  // Ensure allPlans is an array, even if it's null or undefined
+  const safeAllPlans = Array.isArray(allPlans) ? allPlans : [];
   
   // Filter to only show the Pitchhub Premium product
-  const plans = allPlans?.filter((plan: any) => 
+  const plans = safeAllPlans.filter((plan: any) => 
     plan.product?.id === "prod_RuEdYVyOF1Vitg" || 
     plan.product?.name === "Pitchhub Premium"
   );
   
   console.log("Filtered plans:", plans);
   
-  // Get the price amount from the plan
+  // Get the price amount from the plan or use default
   const priceAmount = plans?.[0]?.amount || 4500; // Default to £45 if not found
   
   // Extract features from the plan for the features section
   const premiumFeatures = plans?.[0]?.product?.metadata?.features 
     ? JSON.parse(plans[0].product.metadata.features) 
-    : [];
+    : [
+        { name: "Unlimited Pitches", included: true },
+        { name: "AI-Powered Content", included: true },
+        { name: "Custom Branding", included: true },
+        { name: "Team Collaboration", included: true }
+      ];
 
   return (
     <div className="min-h-screen to-gray-50 from-[#c93333]">
@@ -135,9 +145,26 @@ export default async function Home() {
             </p>
           </div>
           <div className="grid md:grid-cols-1 lg:grid-cols-1 gap-8 max-w-md mx-auto">
-            {plans?.map((item: any) => (
-              <PricingCard key={item.id} item={item} user={user} />
-            ))}
+            {plans && plans.length > 0 ? (
+              plans.map((item: any) => (
+                <PricingCard key={item.id} item={item} user={user} />
+              ))
+            ) : (
+              <div className="text-center p-8 bg-white rounded-xl shadow-sm">
+                <h3 className="text-xl font-semibold mb-4">Pitchhub Premium</h3>
+                <p className="text-3xl font-bold mb-2">£45<span className="text-lg font-normal">/month</span></p>
+                <p className="text-gray-600 mb-6">Full access to all Pitchhub Premium features</p>
+                <Button 
+                  onClick={() => window.location.href = user ? "/dashboard" : "/login?redirect=pricing"}
+                  className="w-full py-6 text-lg font-medium"
+                >
+                  {user ? "Go to Dashboard" : "Sign Up"}
+                </Button>
+                <p className="text-xs text-center w-full mt-3 text-gray-500">
+                  Includes 7-day free trial
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </section>
