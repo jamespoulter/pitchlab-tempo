@@ -18,7 +18,7 @@ export async function SubscriptionCheck({
         redirect('/sign-in');
     }
 
-    const isSubscribed = await checkUserSubscription(user?.id!);
+    const isSubscribed = await checkUserSubscription(user.id);
 
     if (!isSubscribed) {
         redirect(redirectTo);

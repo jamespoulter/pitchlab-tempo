@@ -100,7 +100,7 @@ export function SectionEditorModal({
   const removeListItem = (blockIndex: number, itemIndex: number) => {
     const newBlocks = [...contentBlocks];
     newBlocks[blockIndex].items = newBlocks[blockIndex].items.filter(
-      (_, i) => i !== itemIndex,
+      (_: unknown, i: number) => i !== itemIndex,
     );
     setContentBlocks(newBlocks);
   };
@@ -125,7 +125,7 @@ export function SectionEditorModal({
   const removeStatItem = (blockIndex: number, itemIndex: number) => {
     const newBlocks = [...contentBlocks];
     newBlocks[blockIndex].items = newBlocks[blockIndex].items.filter(
-      (_, i) => i !== itemIndex,
+      (_: unknown, i: number) => i !== itemIndex,
     );
     setContentBlocks(newBlocks);
   };

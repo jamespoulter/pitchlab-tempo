@@ -169,7 +169,7 @@ export default function AddCaseStudyPage() {
                     <Input
                       value={newTag}
                       onChange={(e) => setNewTag(e.target.value)}
-                      placeholder="Add a tag (e.g., "Web Design")"
+                      placeholder="Add a tag (e.g., 'Web Design')"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();

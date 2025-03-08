@@ -215,7 +215,7 @@ export default function AddServicePage() {
                     <Input
                       value={newFeature}
                       onChange={(e) => setNewFeature(e.target.value)}
-                      placeholder="Add a feature (e.g., "Brand Audit & Research")"
+                      placeholder="Add a feature (e.g., 'Brand Audit & Research')"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
@@ -317,7 +317,7 @@ export default function AddServicePage() {
                     <Input
                       value={newDeliverable}
                       onChange={(e) => setNewDeliverable(e.target.value)}
-                      placeholder="Add a deliverable (e.g., "Brand Guidelines (Digital PDF)")"
+                      placeholder="Add a deliverable (e.g., 'Brand Guidelines (Digital PDF)')"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();

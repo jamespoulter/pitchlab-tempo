@@ -252,7 +252,7 @@ export default function AddTeamMemberPage() {
                   <Input
                     value={newSkill}
                     onChange={(e) => setNewSkill(e.target.value)}
-                    placeholder="Add a skill (e.g., "Brand Strategy")"
+                    placeholder="Add a skill (e.g., 'Brand Strategy')"
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();

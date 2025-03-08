@@ -31,7 +31,7 @@ export default function AdminNavbar() {
       const ADMIN_UUID = "1a737665-e3bd-47f7-8cd2-c5d2937a9689";
       const isUserAdmin = user && user.id === ADMIN_UUID;
       
-      setIsAdmin(isUserAdmin);
+      setIsAdmin(!!isUserAdmin);
       
       // Redirect non-admins
       if (!isUserAdmin) {

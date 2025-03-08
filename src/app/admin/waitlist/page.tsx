@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Clock, Download, RefreshCw } from "lucide-react";
+import Link from "next/link";
 
 type WaitlistEntry = {
   id: string;
@@ -52,10 +53,11 @@ export default function AdminWaitlistPage() {
       const ADMIN_UUID = "1a737665-e3bd-47f7-8cd2-c5d2937a9689";
       const isUserAdmin = user && user.id === ADMIN_UUID;
       
-      setIsAdmin(isUserAdmin);
-      return isUserAdmin;
+      setIsAdmin(!!isUserAdmin);
+      return !!isUserAdmin;
     } catch (e) {
       console.error("Error checking admin status:", e);
+      setIsAdmin(false);
       return false;
     }
   };
@@ -185,7 +187,7 @@ export default function AdminWaitlistPage() {
             You don't have permission to access this admin page. Please contact an administrator if you believe this is an error.
           </p>
           <Button asChild>
-            <a href="/">Return to Home</a>
+            <Link href="/">Return to Home</Link>
           </Button>
         </div>
       </div>

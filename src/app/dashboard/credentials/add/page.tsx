@@ -174,7 +174,7 @@ export default function AddCredentialPage() {
                     <Input
                       value={newSkill}
                       onChange={(e) => setNewSkill(e.target.value)}
-                      placeholder="Add a skill (e.g., "Search Campaign Management")"
+                      placeholder="Add a skill (e.g., 'Search Campaign Management')"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
