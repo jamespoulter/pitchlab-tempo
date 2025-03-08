@@ -42,6 +42,7 @@ import { FormMessage, Message } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ManageBillingButton, UpgradeButton, CancelSubscriptionButton } from "@/components/subscription-actions";
 
 export default async function SettingsPage({
   searchParams,
@@ -267,32 +268,15 @@ export default async function SettingsPage({
                       )}
                       
                       <div className="mt-4 flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => window.open('https://billing.stripe.com/p/login/test_28o5nA9Ot8Ub9yw288', '_blank')}
-                        >
-                          Manage Billing
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                        >
-                          Cancel Subscription
-                        </Button>
+                        <ManageBillingButton />
+                        <CancelSubscriptionButton />
                       </div>
                     </div>
                   )}
                   
                   {!subscriptionInfo.isSubscribed && (
                     <div className="mt-4">
-                      <Button
-                        onClick={() => window.location.href = '/#pricing'}
-                      >
-                        <Sparkles className="h-4 w-4 mr-2" />
-                        Upgrade to PitchHub Plus
-                      </Button>
+                      <UpgradeButton />
                     </div>
                   )}
                 </div>
