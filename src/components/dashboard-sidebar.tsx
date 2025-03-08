@@ -14,8 +14,20 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  Sparkles,
+  Clock,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createClient } from "../../supabase/client";
+import { Badge } from "./ui/badge";
+
+interface SubscriptionInfo {
+  isSubscribed: boolean;
+  subscription: any;
+  trialEnd: string | null;
+  daysRemaining: number;
+  isTrialing: boolean;
+}
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -85,6 +97,64 @@ export default function DashboardSidebar() {
   >({
     "agency-details": true,
   });
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo>({
+    isSubscribed: false,
+    subscription: null,
+    trialEnd: null,
+    daysRemaining: 0,
+    isTrialing: false
+  });
+  const supabase = createClient();
+
+  useEffect(() => {
+    // Get subscription info from window object (set by server component)
+    if (typeof window !== 'undefined' && window.subscriptionInfo) {
+      setSubscriptionInfo(window.subscriptionInfo);
+    } else {
+      // Fallback to checking subscription directly if window object not available
+      const checkSubscription = async () => {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          
+          if (user) {
+            // Check if user has an active subscription
+            const { data: subscription } = await supabase
+              .from('subscriptions')
+              .select('*, subscription_items(*)')
+              .eq('user_id', user.id)
+              .eq('status', 'active')
+              .single();
+            
+            if (subscription) {
+              // Check if subscription is in trial period
+              const isTrialing = subscription.trial_end ? new Date(subscription.trial_end) > new Date() : false;
+              
+              // Calculate days remaining in trial
+              let daysRemaining = 0;
+              if (isTrialing && subscription.trial_end) {
+                const trialEnd = new Date(subscription.trial_end);
+                const today = new Date();
+                const diffTime = trialEnd.getTime() - today.getTime();
+                daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              }
+              
+              setSubscriptionInfo({
+                isSubscribed: true,
+                subscription,
+                trialEnd: subscription.trial_end,
+                daysRemaining,
+                isTrialing
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error checking subscription:", error);
+        }
+      };
+      
+      checkSubscription();
+    }
+  }, [supabase]);
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({
@@ -100,8 +170,23 @@ export default function DashboardSidebar() {
           <div className="bg-blue-600 text-white p-1 rounded">
             <FileText className="h-4 w-4" />
           </div>
-          <span className="text-lg font-bold">ProposalPro</span>
+          <span className="text-lg font-bold">PitchHub</span>
         </Link>
+        {subscriptionInfo.isSubscribed && (
+          <div className="mt-2 space-y-1">
+            <Badge variant="premium" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white flex items-center gap-1">
+              <Sparkles className="h-3 w-3" />
+              <span>PitchHub Plus</span>
+            </Badge>
+            
+            {subscriptionInfo.isTrialing && subscriptionInfo.daysRemaining > 0 && (
+              <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
+                <Clock className="h-3 w-3" />
+                <span>{subscriptionInfo.daysRemaining} day{subscriptionInfo.daysRemaining !== 1 ? 's' : ''} left in trial</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto py-4 px-3 space-y-1">

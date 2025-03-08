@@ -6,15 +6,86 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { UserCircle, Home, Bell, Plus, Search } from "lucide-react";
+import { UserCircle, Home, Bell, Plus, Search, Sparkles, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Badge } from "./ui/badge";
+
+interface SubscriptionInfo {
+  isSubscribed: boolean;
+  subscription: any;
+  trialEnd: string | null;
+  daysRemaining: number;
+  isTrialing: boolean;
+}
 
 export default function DashboardNavbar() {
   const supabase = createClient();
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo>({
+    isSubscribed: false,
+    subscription: null,
+    trialEnd: null,
+    daysRemaining: 0,
+    isTrialing: false
+  });
+
+  useEffect(() => {
+    // Get subscription info from window object (set by server component)
+    if (typeof window !== 'undefined' && window.subscriptionInfo) {
+      setSubscriptionInfo(window.subscriptionInfo);
+    }
+    
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+      
+      // Only fetch subscription info if not already set from window object
+      if (!window.subscriptionInfo && user) {
+        try {
+          // Check if user has an active subscription
+          const { data: subscription } = await supabase
+            .from('subscriptions')
+            .select('*, subscription_items(*)')
+            .eq('user_id', user.id)
+            .eq('status', 'active')
+            .single();
+          
+          if (subscription) {
+            // Check if subscription is in trial period
+            const isTrialing = subscription.trial_end ? new Date(subscription.trial_end) > new Date() : false;
+            
+            // Calculate days remaining in trial
+            let daysRemaining = 0;
+            if (isTrialing && subscription.trial_end) {
+              const trialEnd = new Date(subscription.trial_end);
+              const today = new Date();
+              const diffTime = trialEnd.getTime() - today.getTime();
+              daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            }
+            
+            setSubscriptionInfo({
+              isSubscribed: true,
+              subscription,
+              trialEnd: subscription.trial_end,
+              daysRemaining,
+              isTrialing
+            });
+          }
+        } catch (error) {
+          console.error("Error checking subscription:", error);
+        }
+      }
+    };
+    
+    getUser();
+  }, [supabase]);
 
   return (
     <nav className="w-full border-b border-gray-200 bg-white py-3">
@@ -33,6 +104,22 @@ export default function DashboardNavbar() {
         </div>
 
         <div className="flex gap-4 items-center">
+          {subscriptionInfo.isSubscribed && (
+            <div className="flex items-center gap-2">
+              <Badge variant="premium" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
+                <span>PitchHub Plus</span>
+              </Badge>
+              
+              {subscriptionInfo.isTrialing && subscriptionInfo.daysRemaining > 0 && (
+                <div className="flex items-center gap-1 text-xs text-gray-500">
+                  <Clock className="h-3 w-3" />
+                  <span>{subscriptionInfo.daysRemaining} day{subscriptionInfo.daysRemaining !== 1 ? 's' : ''} left</span>
+                </div>
+              )}
+            </div>
+          )}
+          
           <Button
             variant="outline"
             size="sm"
@@ -53,7 +140,35 @@ export default function DashboardNavbar() {
                 <UserCircle className="h-6 w-6" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>
+                <div className="flex flex-col">
+                  <span>{user?.user_metadata?.full_name || user?.email}</span>
+                  <span className="text-xs text-gray-500">{user?.email}</span>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {subscriptionInfo.isSubscribed ? (
+                <DropdownMenuItem className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-blue-600" />
+                  <div className="flex flex-col">
+                    <span>PitchHub Plus Active</span>
+                    {subscriptionInfo.isTrialing && subscriptionInfo.daysRemaining > 0 && (
+                      <span className="text-xs text-gray-500">
+                        {subscriptionInfo.daysRemaining} day{subscriptionInfo.daysRemaining !== 1 ? 's' : ''} left in trial
+                      </span>
+                    )}
+                  </div>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem>
+                  <Link href="/#pricing" className="w-full flex items-center gap-2">
+                    <Sparkles className="h-4 w-4 text-gray-500" />
+                    <span>Upgrade to PitchHub Plus</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <Link href="/dashboard/settings" className="w-full">
                   Settings
@@ -64,11 +179,13 @@ export default function DashboardNavbar() {
                   Back to Home
                 </Link>
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={async () => {
                   await supabase.auth.signOut();
                   router.push("/");
                 }}
+                className="text-red-600 focus:text-red-600"
               >
                 Sign out
               </DropdownMenuItem>

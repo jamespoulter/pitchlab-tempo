@@ -190,16 +190,51 @@ export const signOutAction = async () => {
 export const checkUserSubscription = async (userId: string) => {
   const supabase = await createClient();
 
-  const { data: subscription, error } = await supabase
-    .from('subscriptions')
-    .select('*')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .single();
+  try {
+    const { data: subscription, error } = await supabase
+      .from('subscriptions')
+      .select('*, subscription_items(*)')
+      .eq('user_id', userId)
+      .eq('status', 'active')
+      .single();
 
-  if (error) {
-    return false;
+    if (error || !subscription) {
+      return {
+        isSubscribed: false,
+        subscription: null,
+        trialEnd: null,
+        daysRemaining: 0,
+        isTrialing: false
+      };
+    }
+
+    // Check if subscription is in trial period
+    const isTrialing = subscription.trial_end ? new Date(subscription.trial_end) > new Date() : false;
+    
+    // Calculate days remaining in trial
+    let daysRemaining = 0;
+    if (isTrialing && subscription.trial_end) {
+      const trialEnd = new Date(subscription.trial_end);
+      const today = new Date();
+      const diffTime = trialEnd.getTime() - today.getTime();
+      daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    return {
+      isSubscribed: true,
+      subscription,
+      trialEnd: subscription.trial_end,
+      daysRemaining,
+      isTrialing
+    };
+  } catch (err) {
+    console.error("Error checking subscription:", err);
+    return {
+      isSubscribed: false,
+      subscription: null,
+      trialEnd: null,
+      daysRemaining: 0,
+      isTrialing: false
+    };
   }
-
-  return !!subscription;
 };
