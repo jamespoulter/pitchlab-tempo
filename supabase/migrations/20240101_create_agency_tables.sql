@@ -100,4 +100,14 @@ CREATE TABLE IF NOT EXISTS services (
 -- Create testimonials table
 CREATE TABLE IF NOT EXISTS testimonials (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_i
+  user_id UUID REFERENCES users(id) NOT NULL,
+  client_name TEXT NOT NULL,
+  client_position TEXT,
+  client_company TEXT,
+  content TEXT NOT NULL,
+  rating INTEGER,
+  image_url TEXT,
+  date DATE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);

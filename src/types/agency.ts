@@ -158,6 +158,16 @@ export interface CaseStudy {
   team_members: string[];
   technologies: string[];
   timeline: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  awards: string[];
+  project_url: string | null;
+  budget: string | null;
+  client_logo_url: string | null;
+  key_features: string[];
+  metrics: Record<string, string> | null;
+  gallery_images: string[];
+  video_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -178,4 +188,14 @@ export interface CaseStudyFormData {
   team_members: string[];
   technologies: string[];
   timeline?: string | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  awards?: string[];
+  project_url?: string | null;
+  budget?: string | null;
+  client_logo_url?: string | null;
+  key_features?: string[];
+  metrics?: Record<string, string> | null;
+  gallery_images?: string[];
+  video_url?: string | null;
 } 
