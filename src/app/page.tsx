@@ -20,8 +20,14 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Fetch plans from the updated Edge function
   const { data: allPlans, error } = await supabase.functions.invoke(
     "get-plans",
+    {
+      body: {
+        product_id: "prod_RuEdYVyOF1Vitg" // Pitchhub Premium product ID
+      }
+    }
   );
   
   // Debug the plans data
@@ -29,13 +35,13 @@ export default async function Home() {
   
   // Filter to only show the Pitchhub Premium product
   const plans = allPlans?.filter((plan: any) => 
-    plan.product?.name === "Pitchhub Premium" || 
-    plan.id === "price_1R0QA2I7Diy7LoDft8J57jK3"
+    plan.product?.id === "prod_RuEdYVyOF1Vitg" || 
+    plan.product?.name === "Pitchhub Premium"
   );
   
   console.log("Filtered plans:", plans);
   
-  // Make sure we're using the correct price
+  // Get the price amount from the plan
   const priceAmount = plans?.[0]?.amount || 4500; // Default to £45 if not found
   
   // Extract features from the plan for the features section

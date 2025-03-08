@@ -17,29 +17,82 @@ serve(async (req) => {
     }
 
     try {
-        // Get all active plans with expanded product information
-        const plans = await stripe.plans.list({
+        // Get the specific product ID from the URL query parameters or use default
+        const url = new URL(req.url);
+        const productId = url.searchParams.get('product_id') || 'prod_RuEdYVyOF1Vitg'; // Default to Pitchhub Premium
+        
+        console.log(`Fetching prices for product: ${productId}`);
+        
+        // Get prices for the specific product
+        const prices = await stripe.prices.list({
+            product: productId,
             active: true,
             expand: ['data.product']
         });
-
-        // Sort plans by amount (price)
-        const sortedPlans = plans.data.sort((a, b) => a.amount - b.amount);
-
-        // Enhance plan data with additional information
-        const enhancedPlans = sortedPlans.map(plan => {
-            // Add a popular flag based on metadata or specific plan ID
-            const isPopular = plan.metadata?.popular === 'true' || false;
+        
+        console.log(`Found ${prices.data.length} prices for product ${productId}`);
+        
+        if (prices.data.length === 0) {
+            // Fallback to listing all plans if no prices found for the specific product
+            console.log("No prices found for specified product, fetching all plans");
+            const plans = await stripe.plans.list({
+                active: true,
+                expand: ['data.product']
+            });
             
+            // Sort plans by amount (price)
+            const sortedPlans = plans.data.sort((a, b) => a.amount - b.amount);
+            
+            // Enhance plan data with additional information
+            const enhancedPlans = sortedPlans.map(plan => {
+                // Add a popular flag based on metadata or specific plan ID
+                const isPopular = plan.metadata?.popular === 'true' || false;
+                
+                return {
+                    ...plan,
+                    popular: isPopular,
+                };
+            });
+            
+            return new Response(
+                JSON.stringify(enhancedPlans),
+                { 
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 200 
+                }
+            );
+        }
+        
+        // Sort prices by amount
+        const sortedPrices = prices.data.sort((a, b) => a.unit_amount - b.unit_amount);
+        
+        // Enhance price data with additional information
+        const enhancedPrices = sortedPrices.map(price => {
+            // Add a popular flag based on metadata
+            const isPopular = price.product.metadata?.popular === 'true' || false;
+            
+            // Convert price to plan format for compatibility
             return {
-                ...plan,
+                id: price.id,
+                object: 'plan',
+                active: price.active,
+                amount: price.unit_amount,
+                amount_decimal: price.unit_amount.toString(),
+                currency: price.currency,
+                interval: price.recurring?.interval || 'month',
+                interval_count: price.recurring?.interval_count || 1,
+                product: price.product,
+                metadata: price.metadata,
                 popular: isPopular,
-                // You can add more custom fields here as needed
+                // Add trial period days from product metadata
+                trial_period_days: price.product.metadata?.trial_period_days 
+                    ? parseInt(price.product.metadata.trial_period_days) 
+                    : null
             };
         });
-
+        
         return new Response(
-            JSON.stringify(enhancedPlans),
+            JSON.stringify(enhancedPrices),
             { 
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                 status: 200 

@@ -16,6 +16,7 @@ interface Plan {
     interval: string;
     popular?: boolean;
     product?: {
+        id?: string;
         name?: string;
         metadata?: {
             features?: string;
@@ -58,14 +59,17 @@ export default async function Pricing() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Use the new function name and get all plans
-    const { data: allPlans, error } = await supabase.functions.invoke('get-plans');
+    // Use the new function name and get plans for the specific product
+    const { data: allPlans, error } = await supabase.functions.invoke('get-plans', {
+        body: {
+            product_id: "prod_RuEdYVyOF1Vitg" // Pitchhub Premium product ID
+        }
+    });
     
     // Filter to only show the Pitchhub Premium product
-    // You can modify this filter if you want to show multiple plans
     const plans = allPlans?.filter((plan: Plan) => 
-        plan.product?.name === "Pitchhub Premium" || 
-        plan.id === "price_1R0QA2I7Diy7LoDft8J57jK3"
+        plan.product?.id === "prod_RuEdYVyOF1Vitg" || 
+        plan.product?.name === "Pitchhub Premium"
     );
     
     // Extract common features for the comparison table
