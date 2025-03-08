@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { Button } from "./ui/button";
-import { UserCircle, Home, Bell, Plus, Search, Sparkles, Clock } from "lucide-react";
+import { UserCircle, Home, Bell, Plus, Search, Sparkles, Clock, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Badge } from "./ui/badge";
@@ -28,6 +28,7 @@ export default function DashboardNavbar() {
   const supabase = createClient();
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo>({
     isSubscribed: false,
     subscription: null,
@@ -45,6 +46,10 @@ export default function DashboardNavbar() {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
+      
+      // Check if the user is an admin
+      const ADMIN_UUID = "1a737665-e3bd-47f7-8cd2-c5d2937a9689";
+      setIsAdmin(user ? user.id === ADMIN_UUID : false);
       
       // Only fetch subscription info if not already set from window object
       if (!window.subscriptionInfo && user) {
@@ -104,6 +109,20 @@ export default function DashboardNavbar() {
         </div>
 
         <div className="flex gap-4 items-center">
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+              asChild
+            >
+              <Link href="/admin">
+                <Shield className="h-4 w-4" />
+                <span>Admin Panel</span>
+              </Link>
+            </Button>
+          )}
+          
           {subscriptionInfo.isSubscribed && (
             <div className="flex items-center gap-2">
               <Badge variant="premium" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white flex items-center gap-1">
@@ -148,6 +167,14 @@ export default function DashboardNavbar() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
+              {isAdmin && (
+                <DropdownMenuItem>
+                  <Link href="/admin" className="w-full flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-red-600" />
+                    <span>Admin Panel</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
               {subscriptionInfo.isSubscribed ? (
                 <DropdownMenuItem className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-blue-600" />
