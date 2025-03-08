@@ -247,4 +247,57 @@ export interface TeamMemberFormData {
   }[];
   projects?: string[];
   certifications?: string[];
+}
+
+// Service Types
+export interface Service {
+  id?: string;
+  user_id?: string;
+  name: string;
+  description: string;
+  features: string[];
+  priceRange: string;
+  timeline: string;
+  category: string;
+  icon: string;
+  deliverables: string[];
+  process?: {
+    name: string;
+    description: string;
+  }[];
+  faq?: {
+    question: string;
+    answer: string;
+  }[];
+  testimonials?: {
+    quote: string;
+    author: string;
+    title: string;
+  }[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface ServiceFormData {
+  name: string;
+  description: string;
+  features: string[];
+  priceRange: string;
+  timeline: string;
+  category: string;
+  icon: string;
+  deliverables: string[];
+  process?: {
+    name: string;
+    description: string;
+  }[];
+  faq?: {
+    question: string;
+    answer: string;
+  }[];
+  testimonials?: {
+    quote: string;
+    author: string;
+    title: string;
+  }[];
 } 

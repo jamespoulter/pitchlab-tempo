@@ -36,12 +36,15 @@ export function EditBrandingModal({
     },
   },
 }: EditBrandingModalProps) {
-  const [colors, setColors] = useState<ColorItem[]>(initialData.colors || []);
+  // Ensure colors is an array
+  const initialColors = Array.isArray(initialData.colors) ? initialData.colors : [];
+  const [colors, setColors] = useState<ColorItem[]>(initialColors);
   const [newColorName, setNewColorName] = useState("");
   const [newColorValue, setNewColorValue] = useState("#000000");
   const [newColorVariable, setNewColorVariable] = useState("");
   
-  const [typography, setTypography] = useState<Typography>(initialData.typography || {
+  // Ensure typography has the expected structure
+  const defaultTypography: Typography = {
     headings: {
       fontFamily: "",
       weights: [],
@@ -51,7 +54,24 @@ export function EditBrandingModal({
       fontFamily: "",
       weights: [],
     },
-  });
+  };
+  
+  const initialTypography = initialData.typography || defaultTypography;
+  
+  // Ensure all required properties exist
+  const processedTypography: Typography = {
+    headings: {
+      fontFamily: initialTypography.headings?.fontFamily || "",
+      weights: Array.isArray(initialTypography.headings?.weights) ? initialTypography.headings.weights : [],
+      sizes: initialTypography.headings?.sizes || { h1: "", h2: "", h3: "", h4: "", h5: "" },
+    },
+    body: {
+      fontFamily: initialTypography.body?.fontFamily || "",
+      weights: Array.isArray(initialTypography.body?.weights) ? initialTypography.body.weights : [],
+    },
+  };
+  
+  const [typography, setTypography] = useState<Typography>(processedTypography);
   
   const [logoUrl, setLogoUrl] = useState<string | undefined>(initialData.logo_url);
   const [logoDarkUrl, setLogoDarkUrl] = useState<string | undefined>(initialData.logo_dark_url);
@@ -182,9 +202,22 @@ export function EditBrandingModal({
       // Make sure colors is an array
       const colorsToSave = Array.isArray(colors) ? colors : [];
       
+      // Ensure typography has the expected structure
+      const typographyToSave: Typography = {
+        headings: {
+          fontFamily: typography.headings?.fontFamily || "",
+          weights: Array.isArray(typography.headings?.weights) ? typography.headings.weights : [],
+          sizes: typography.headings?.sizes || { h1: "", h2: "", h3: "", h4: "", h5: "" },
+        },
+        body: {
+          fontFamily: typography.body?.fontFamily || "",
+          weights: Array.isArray(typography.body?.weights) ? typography.body.weights : [],
+        },
+      };
+      
       const brandingData: Partial<AgencyBranding> = {
         colors: colorsToSave,
-        typography,
+        typography: typographyToSave,
         logo_url: logoUrl,
         logo_dark_url: logoDarkUrl,
         icon_url: iconUrl,

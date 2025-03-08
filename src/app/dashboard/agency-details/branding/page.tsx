@@ -42,10 +42,27 @@ export default function AgencyBrandingPage() {
         console.log("Fetched branding data:", data);
         
         if (data) {
-          // Ensure colors is an array
+          // Ensure colors is an array and typography has the expected structure
           const processedData = {
             ...data,
             colors: Array.isArray(data.colors) ? data.colors : [],
+            typography: {
+              headings: {
+                fontFamily: data.typography?.headings?.fontFamily || 'Montserrat',
+                weights: data.typography?.headings?.weights || ['600', '700'],
+                sizes: data.typography?.headings?.sizes || {
+                  h1: "2.5rem",
+                  h2: "2rem",
+                  h3: "1.5rem",
+                  h4: "1.25rem",
+                  h5: "1rem",
+                }
+              },
+              body: {
+                fontFamily: data.typography?.body?.fontFamily || 'Inter',
+                weights: data.typography?.body?.weights || ['400', '500'],
+              }
+            }
           };
           console.log("Processed branding data:", processedData);
           setBranding(processedData);
@@ -83,6 +100,35 @@ export default function AgencyBrandingPage() {
       } catch (error) {
         console.error("Error fetching agency branding:", error);
         toast.error("Failed to load agency branding");
+        
+        // Set default branding even on error
+        const defaultBranding = {
+          colors: [
+            { name: "Primary", color: "#0369a1", variable: "--primary" },
+            { name: "Secondary", color: "#0e7490", variable: "--secondary" },
+            { name: "Accent", color: "#0284c7", variable: "--accent" },
+            { name: "Text", color: "#1e293b", variable: "--text" },
+            { name: "Background", color: "#f8fafc", variable: "--background" },
+          ],
+          typography: {
+            headings: {
+              fontFamily: "Montserrat",
+              weights: ["600", "700"],
+              sizes: {
+                h1: "2.5rem",
+                h2: "2rem",
+                h3: "1.5rem",
+                h4: "1.25rem",
+                h5: "1rem",
+              },
+            },
+            body: {
+              fontFamily: "Inter",
+              weights: ["400", "500"],
+            },
+          },
+        };
+        setBranding(defaultBranding);
       } finally {
         setIsLoading(false);
       }
@@ -176,19 +222,19 @@ export default function AgencyBrandingPage() {
               <div>
                 <h3 className="text-sm font-medium mb-2">Headings</h3>
                 <p className="text-sm">
-                  <span className="font-medium">Font:</span> {branding?.typography.headings.fontFamily}
+                  <span className="font-medium">Font:</span> {branding?.typography?.headings?.fontFamily || 'Not set'}
                 </p>
                 <p className="text-sm">
-                  <span className="font-medium">Weights:</span> {branding?.typography.headings.weights.join(", ")}
+                  <span className="font-medium">Weights:</span> {branding?.typography?.headings?.weights?.join(", ") || 'Not set'}
                 </p>
               </div>
               <div>
                 <h3 className="text-sm font-medium mb-2">Body Text</h3>
                 <p className="text-sm">
-                  <span className="font-medium">Font:</span> {branding?.typography.body.fontFamily}
+                  <span className="font-medium">Font:</span> {branding?.typography?.body?.fontFamily || 'Not set'}
                 </p>
                 <p className="text-sm">
-                  <span className="font-medium">Weights:</span> {branding?.typography.body.weights.join(", ")}
+                  <span className="font-medium">Weights:</span> {branding?.typography?.body?.weights?.join(", ") || 'Not set'}
                 </p>
               </div>
             </CardContent>

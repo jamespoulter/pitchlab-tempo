@@ -1,5 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
-import { AgencyProfile, AgencyProfileFormData, AgencyBranding, AgencyAsset, AgencyAssetFormData, AgencyCredential, AgencyCredentialFormData, CaseStudy, CaseStudyFormData, TeamMember, TeamMemberFormData } from "@/types/agency";
+import { AgencyProfile, AgencyProfileFormData, AgencyBranding, AgencyAsset, AgencyAssetFormData, AgencyCredential, AgencyCredentialFormData, CaseStudy, CaseStudyFormData, TeamMember, TeamMemberFormData, Service, ServiceFormData } from "@/types/agency";
 
 // Create a Supabase client for browser-side operations
 export const createClient = () => {
@@ -223,10 +223,41 @@ export async function upsertAgencyBranding(brandingData: Partial<AgencyBranding>
   const colors = Array.isArray(brandingData.colors) ? brandingData.colors : [];
   console.log("Colors to save:", colors);
   
+  // Ensure typography has the expected structure
+  const defaultTypography = {
+    headings: {
+      fontFamily: "Montserrat",
+      weights: ["600", "700"],
+      sizes: { h1: "2.5rem", h2: "2rem", h3: "1.5rem", h4: "1.25rem", h5: "1rem" },
+    },
+    body: {
+      fontFamily: "Inter",
+      weights: ["400", "500"],
+    },
+  };
+  
+  const typography = brandingData.typography || defaultTypography;
+  
+  // Ensure all required properties exist
+  const processedTypography = {
+    headings: {
+      fontFamily: typography.headings?.fontFamily || defaultTypography.headings.fontFamily,
+      weights: Array.isArray(typography.headings?.weights) ? typography.headings.weights : defaultTypography.headings.weights,
+      sizes: typography.headings?.sizes || defaultTypography.headings.sizes,
+    },
+    body: {
+      fontFamily: typography.body?.fontFamily || defaultTypography.body.fontFamily,
+      weights: Array.isArray(typography.body?.weights) ? typography.body.weights : defaultTypography.body.weights,
+    },
+  };
+  
+  console.log("Typography to save:", processedTypography);
+  
   // Prepare the data with the user_id
   const data: Partial<AgencyBranding> = {
     ...brandingData,
     colors: colors,
+    typography: processedTypography,
     user_id: user.id,
   };
   
@@ -1142,4 +1173,160 @@ export async function uploadTeamMemberAvatar(file: File): Promise<{ success: boo
     .getPublicUrl(data.path);
   
   return { success: true, url: publicUrl };
+}
+
+// Service Functions
+
+/**
+ * Fetches all services for the current authenticated user
+ */
+export async function getServices(): Promise<Service[]> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return [];
+  }
+  
+  // Get all services for the user
+  const { data, error } = await supabase
+    .from("services")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+  
+  if (error) {
+    console.error("Error fetching services:", error);
+    return [];
+  }
+  
+  return data || [];
+}
+
+/**
+ * Fetches a service by ID for the current authenticated user
+ */
+export async function getServiceById(serviceId: string): Promise<Service | null> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return null;
+  }
+  
+  // Get the service
+  const { data, error } = await supabase
+    .from("services")
+    .select("*")
+    .eq("id", serviceId)
+    .eq("user_id", user.id)
+    .single();
+  
+  if (error) {
+    console.error("Error fetching service:", error);
+    return null;
+  }
+  
+  return data;
+}
+
+/**
+ * Creates a new service for the current authenticated user
+ */
+export async function createService(serviceData: ServiceFormData): Promise<{ success: boolean; data?: Service; error?: any }> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Prepare the data with the user_id
+  const data = {
+    ...serviceData,
+    user_id: user.id,
+  };
+  
+  // Create the service
+  const { data: newService, error } = await supabase
+    .from("services")
+    .insert(data)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error creating service:", error);
+    return { success: false, error };
+  }
+  
+  return { success: true, data: newService };
+}
+
+/**
+ * Updates a service for the current authenticated user
+ */
+export async function updateService(serviceId: string, serviceData: Partial<ServiceFormData>): Promise<{ success: boolean; data?: Service; error?: any }> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Update the service
+  const { data, error } = await supabase
+    .from("services")
+    .update(serviceData)
+    .eq("id", serviceId)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error updating service:", error);
+    return { success: false, error };
+  }
+  
+  return { success: true, data };
+}
+
+/**
+ * Deletes a service for the current authenticated user
+ */
+export async function deleteService(serviceId: string): Promise<{ success: boolean; error?: any }> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Delete the service
+  const { error } = await supabase
+    .from("services")
+    .delete()
+    .eq("id", serviceId)
+    .eq("user_id", user.id);
+  
+  if (error) {
+    console.error("Error deleting service:", error);
+    return { success: false, error };
+  }
+  
+  return { success: true };
 } 
