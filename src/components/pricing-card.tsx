@@ -12,7 +12,7 @@ import {
 } from "./ui/card";
 import { supabase } from "../../supabase/supabase";
 import { Check } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface PlanFeature {
     name: string;
@@ -24,6 +24,11 @@ export default function PricingCard({ item, user }: {
     user: User | null
 }) {
     const [isLoading, setIsLoading] = useState(false);
+    
+    // Debug the item data
+    useEffect(() => {
+        console.log("PricingCard item:", item);
+    }, [item]);
 
     // Extract features from plan metadata or product metadata
     const features: PlanFeature[] = item.product?.metadata?.features 

@@ -3,7 +3,16 @@ import Navbar from "@/components/navbar";
 import PricingCard from "@/components/pricing-card";
 import Footer from "@/components/footer";
 import { createClient } from "../../supabase/server";
-import { ArrowUpRight, CheckCircle2, Zap, Shield, Users } from "lucide-react";
+import { 
+  ArrowUpRight, 
+  CheckCircle2, 
+  Zap, 
+  Shield, 
+  Users, 
+  FileText, 
+  Sparkles, 
+  Presentation 
+} from "lucide-react";
 
 export default async function Home() {
   const supabase = await createClient();
@@ -15,11 +24,24 @@ export default async function Home() {
     "get-plans",
   );
   
+  // Debug the plans data
+  console.log("All plans from Stripe:", allPlans);
+  
   // Filter to only show the Pitchhub Premium product
   const plans = allPlans?.filter((plan: any) => 
     plan.product?.name === "Pitchhub Premium" || 
     plan.id === "price_1R0QA2I7Diy7LoDft8J57jK3"
   );
+  
+  console.log("Filtered plans:", plans);
+  
+  // Make sure we're using the correct price
+  const priceAmount = plans?.[0]?.amount || 4500; // Default to £45 if not found
+  
+  // Extract features from the plan for the features section
+  const premiumFeatures = plans?.[0]?.product?.metadata?.features 
+    ? JSON.parse(plans[0].product.metadata.features) 
+    : [];
 
   return (
     <div className="min-h-screen to-gray-50 from-[#c93333]">
@@ -29,34 +51,33 @@ export default async function Home() {
       <section className="py-24 bg-white">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Why Choose Us</h2>
+            <h2 className="text-3xl font-bold mb-4">Pitchhub Premium Features</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              We're revolutionizing the way teams work with cutting-edge
-              technology and unparalleled service.
+              Everything you need to create winning pitches that stand out from the competition.
             </p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {
-                icon: <Zap className="w-6 h-6" />,
-                title: "Lightning Fast",
-                description: "10x faster than traditional solutions",
+                icon: <Presentation className="w-6 h-6" />,
+                title: "Unlimited Pitches",
+                description: "Create as many professional pitches as you need",
               },
               {
-                icon: <Shield className="w-6 h-6" />,
-                title: "Enterprise Security",
-                description: "Bank-grade encryption built-in",
+                icon: <Sparkles className="w-6 h-6" />,
+                title: "AI-Powered Content",
+                description: "Generate compelling content with our AI assistant",
+              },
+              {
+                icon: <FileText className="w-6 h-6" />,
+                title: "Custom Branding",
+                description: "Add your logo, colors, and brand identity",
               },
               {
                 icon: <Users className="w-6 h-6" />,
                 title: "Team Collaboration",
-                description: "Seamless workflow for your entire team",
-              },
-              {
-                icon: <CheckCircle2 className="w-6 h-6" />,
-                title: "99.9% Uptime",
-                description: "Reliability you can count on",
+                description: "Work together seamlessly with your team",
               },
             ].map((feature, index) => (
               <div
@@ -76,16 +97,22 @@ export default async function Home() {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-3 gap-8 text-center">
             <div>
-              <div className="text-4xl font-bold mb-2">$1M+</div>
-              <div className="text-blue-100">Funding Raised</div>
+              <div className="text-4xl font-bold mb-2">
+                {new Intl.NumberFormat('en-GB', {
+                  style: 'currency',
+                  currency: 'GBP',
+                  minimumFractionDigits: 0,
+                }).format(priceAmount / 100)}
+              </div>
+              <div className="text-blue-100">Per Month</div>
+            </div>
+            <div>
+              <div className="text-4xl font-bold mb-2">7 Days</div>
+              <div className="text-blue-100">Free Trial</div>
             </div>
             <div>
               <div className="text-4xl font-bold mb-2">500+</div>
               <div className="text-blue-100">Happy Customers</div>
-            </div>
-            <div>
-              <div className="text-4xl font-bold mb-2">99.9%</div>
-              <div className="text-blue-100">Uptime Guaranteed</div>
             </div>
           </div>
         </div>
@@ -98,10 +125,10 @@ export default async function Home() {
               Simple, Transparent Pricing
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Choose the perfect plan for your needs. No hidden fees.
+              Start with a 7-day free trial. No credit card required.
             </p>
           </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-1 lg:grid-cols-1 gap-8 max-w-md mx-auto">
             {plans?.map((item: any) => (
               <PricingCard key={item.id} item={item} user={user} />
             ))}
@@ -111,16 +138,15 @@ export default async function Home() {
       {/* CTA Section */}
       <section className="py-20 bg-gray-50">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
+          <h2 className="text-3xl font-bold mb-4">Ready to Create Winning Pitches?</h2>
           <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-            Join thousands of satisfied customers who trust us with their
-            business.
+            Join hundreds of professionals who are creating standout pitches with Pitchhub Premium.
           </p>
           <a
             href="/dashboard"
             className="inline-flex items-center px-6 py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
           >
-            Get Started Now
+            Start Your 7-Day Free Trial
             <ArrowUpRight className="ml-2 w-4 h-4" />
           </a>
         </div>
