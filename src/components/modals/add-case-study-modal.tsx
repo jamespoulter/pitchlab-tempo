@@ -10,6 +10,13 @@ import { createCaseStudy, uploadCaseStudyImage } from "@/utils/supabase-client";
 import { CaseStudy, CaseStudyFormData } from "@/types/agency";
 import { toast } from "@/components/ui/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface AddCaseStudyModalProps {
   isOpen: boolean;
@@ -218,14 +225,32 @@ export function AddCaseStudyModal({
       return;
     }
     
+    console.log("Starting case study submission...");
+    console.log("Form data:", formData);
+    
     setIsSubmitting(true);
     
     try {
       let dataToSubmit = { ...formData };
       
+      // Ensure metrics is a valid object for JSONB storage
+      if (dataToSubmit.metrics && Object.keys(dataToSubmit.metrics).length === 0) {
+        dataToSubmit.metrics = null;
+      }
+      
+      // Ensure arrays are properly initialized
+      dataToSubmit.tags = dataToSubmit.tags || [];
+      dataToSubmit.team_members = dataToSubmit.team_members || [];
+      dataToSubmit.technologies = dataToSubmit.technologies || [];
+      dataToSubmit.awards = dataToSubmit.awards || [];
+      dataToSubmit.key_features = dataToSubmit.key_features || [];
+      dataToSubmit.gallery_images = dataToSubmit.gallery_images || [];
+      
       // Upload image if one was selected
       if (imageFile) {
+        console.log("Uploading case study image...");
         const { success, url, error } = await uploadCaseStudyImage(imageFile);
+        console.log("Image upload result:", { success, url, error });
         if (success && url) {
           dataToSubmit.image_url = url;
         } else {
@@ -235,7 +260,9 @@ export function AddCaseStudyModal({
       
       // Upload client logo if one was selected
       if (clientLogoFile) {
+        console.log("Uploading client logo...");
         const { success, url, error } = await uploadCaseStudyImage(clientLogoFile);
+        console.log("Logo upload result:", { success, url, error });
         if (success && url) {
           dataToSubmit.client_logo_url = url;
         } else {
@@ -243,8 +270,11 @@ export function AddCaseStudyModal({
         }
       }
       
+      console.log("Creating case study with data:", dataToSubmit);
+      
       // Create the case study
       const { success, data, error } = await createCaseStudy(dataToSubmit);
+      console.log("Create case study result:", { success, data, error });
       
       if (success && data) {
         toast({
@@ -305,20 +335,14 @@ export function AddCaseStudyModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-[800px] max-h-[90vh] overflow-y-auto p-6">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">Add Case Study</h2>
-          <button 
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        <p className="text-sm text-gray-500 mb-4">
-          Add a new case study to showcase your agency's successful client projects.
-        </p>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Add Case Study</DialogTitle>
+          <DialogDescription>
+            Add a new case study to showcase your agency's successful client projects.
+          </DialogDescription>
+        </DialogHeader>
         
         <Tabs defaultValue="basic" className="w-full">
           <TabsList className="grid grid-cols-4 mb-4">
@@ -866,7 +890,7 @@ export function AddCaseStudyModal({
             )}
           </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

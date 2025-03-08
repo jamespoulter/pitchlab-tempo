@@ -50,6 +50,7 @@ export default function CaseStudiesPage() {
       setIsLoading(true);
       try {
         const data = await getCaseStudies();
+        console.log("Case studies fetched:", data);
         setCaseStudies(data);
       } catch (error) {
         console.error("Error fetching case studies:", error);
@@ -216,6 +217,10 @@ export default function CaseStudiesPage() {
                       src={caseStudy.image_url || "https://images.unsplash.com/photo-1523381294911-8d3cead13475?w=800&q=80"}
                       alt={caseStudy.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      onError={(e) => {
+                        // Fallback if image fails to load
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1523381294911-8d3cead13475?w=800&q=80";
+                      }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
                       <Button 

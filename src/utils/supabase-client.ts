@@ -709,6 +709,8 @@ export async function uploadCredentialImage(file: File): Promise<{ success: bool
 export async function getCaseStudies(): Promise<CaseStudy[]> {
   const supabase = createClient();
   
+  console.log("Fetching case studies...");
+  
   // Get the current user
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   
@@ -716,6 +718,8 @@ export async function getCaseStudies(): Promise<CaseStudy[]> {
     console.error("Error fetching user:", userError);
     return [];
   }
+  
+  console.log("Current user ID:", user.id);
   
   // Get all case studies for the user
   const { data, error } = await supabase
@@ -728,6 +732,9 @@ export async function getCaseStudies(): Promise<CaseStudy[]> {
     console.error("Error fetching case studies:", error);
     return [];
   }
+  
+  console.log("Case studies fetched:", data ? data.length : 0);
+  console.log("First case study (if any):", data && data.length > 0 ? data[0] : "No case studies found");
   
   return data || [];
 }
@@ -768,6 +775,8 @@ export async function getCaseStudyById(caseStudyId: string): Promise<CaseStudy |
 export async function createCaseStudy(caseStudyData: CaseStudyFormData): Promise<{ success: boolean; data?: CaseStudy; error?: any }> {
   const supabase = createClient();
   
+  console.log("Creating case study with data:", caseStudyData);
+  
   // Get the current user
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   
@@ -776,22 +785,31 @@ export async function createCaseStudy(caseStudyData: CaseStudyFormData): Promise
     return { success: false, error: userError };
   }
   
-  // Create the case study
-  const { data, error } = await supabase
-    .from("case_studies")
-    .insert({
-      ...caseStudyData,
-      user_id: user.id
-    })
-    .select()
-    .single();
+  console.log("Current user ID for case study creation:", user.id);
   
-  if (error) {
-    console.error("Error creating case study:", error);
+  try {
+    // Create the case study
+    const { data, error } = await supabase
+      .from("case_studies")
+      .insert({
+        ...caseStudyData,
+        user_id: user.id
+      })
+      .select()
+      .single();
+    
+    if (error) {
+      console.error("Error creating case study:", error);
+      return { success: false, error };
+    }
+    
+    console.log("Case study created successfully:", data);
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error("Unexpected error creating case study:", error);
     return { success: false, error };
   }
-  
-  return { success: true, data };
 }
 
 /**
@@ -800,6 +818,9 @@ export async function createCaseStudy(caseStudyData: CaseStudyFormData): Promise
 export async function updateCaseStudy(caseStudyId: string, caseStudyData: Partial<CaseStudyFormData>): Promise<{ success: boolean; data?: CaseStudy; error?: any }> {
   const supabase = createClient();
   
+  console.log("Updating case study with ID:", caseStudyId);
+  console.log("Update data:", caseStudyData);
+  
   // Get the current user
   const { data: { user }, error: userError } = await supabase.auth.getUser();
   
@@ -808,21 +829,28 @@ export async function updateCaseStudy(caseStudyId: string, caseStudyData: Partia
     return { success: false, error: userError };
   }
   
-  // Update the case study
-  const { data, error } = await supabase
-    .from("case_studies")
-    .update(caseStudyData)
-    .eq("id", caseStudyId)
-    .eq("user_id", user.id)
-    .select()
-    .single();
-  
-  if (error) {
-    console.error("Error updating case study:", error);
+  try {
+    // Update the case study
+    const { data, error } = await supabase
+      .from("case_studies")
+      .update(caseStudyData)
+      .eq("id", caseStudyId)
+      .eq("user_id", user.id)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error("Error updating case study:", error);
+      return { success: false, error };
+    }
+    
+    console.log("Case study updated successfully:", data);
+    
+    return { success: true, data };
+  } catch (error) {
+    console.error("Unexpected error updating case study:", error);
     return { success: false, error };
   }
-  
-  return { success: true, data };
 }
 
 /**
@@ -860,36 +888,47 @@ export async function deleteCaseStudy(caseStudyId: string): Promise<{ success: b
 export async function uploadCaseStudyImage(file: File): Promise<{ success: boolean; url?: string; error?: any }> {
   const supabase = createClient();
   
-  // Get the current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  console.log("Uploading case study image:", file.name);
   
-  if (userError || !user) {
-    console.error("Error fetching user:", userError);
-    return { success: false, error: userError };
-  }
-  
-  // Create a unique file path
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${user.id}/${Date.now()}.${fileExt}`;
-  const filePath = `${fileName}`;
-  
-  // Upload the file
-  const { data, error } = await supabase.storage
-    .from('case_study_images')
-    .upload(filePath, file, {
-      cacheControl: '3600',
-      upsert: false
-    });
-  
-  if (error) {
-    console.error("Error uploading case study image:", error);
+  try {
+    // Get the current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error("Error fetching user:", userError);
+      return { success: false, error: userError };
+    }
+    
+    // Create a unique file path
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+    
+    console.log("Uploading to path:", filePath);
+    
+    // Upload the file
+    const { data, error } = await supabase.storage
+      .from('case_study_images')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+    
+    if (error) {
+      console.error("Error uploading case study image:", error);
+      return { success: false, error };
+    }
+    
+    // Get the public URL
+    const { data: { publicUrl } } = supabase.storage
+      .from('case_study_images')
+      .getPublicUrl(filePath);
+    
+    console.log("Image uploaded successfully, public URL:", publicUrl);
+    
+    return { success: true, url: publicUrl };
+  } catch (error) {
+    console.error("Unexpected error uploading case study image:", error);
     return { success: false, error };
   }
-  
-  // Get the public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from('case_study_images')
-    .getPublicUrl(filePath);
-  
-  return { success: true, url: publicUrl };
 } 

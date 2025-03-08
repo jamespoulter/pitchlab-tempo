@@ -64,6 +64,16 @@ export default function CaseStudyPage({ params }: { params: { id: string } }) {
     team_members: [],
     technologies: [],
     timeline: "",
+    start_date: "",
+    end_date: "",
+    awards: [],
+    project_url: "",
+    budget: "",
+    client_logo_url: "",
+    key_features: [],
+    metrics: {},
+    gallery_images: [],
+    video_url: "",
   });
   
   // State for new tag input
@@ -103,6 +113,16 @@ export default function CaseStudyPage({ params }: { params: { id: string } }) {
             team_members: data.team_members || [],
             technologies: data.technologies || [],
             timeline: data.timeline,
+            start_date: data.start_date,
+            end_date: data.end_date,
+            awards: data.awards || [],
+            project_url: data.project_url,
+            budget: data.budget,
+            client_logo_url: data.client_logo_url,
+            key_features: data.key_features || [],
+            metrics: data.metrics || {},
+            gallery_images: data.gallery_images || [],
+            video_url: data.video_url,
           });
         } else {
           toast({
@@ -202,6 +222,19 @@ export default function CaseStudyPage({ params }: { params: { id: string } }) {
     setIsSaving(true);
     try {
       let updatedData = { ...formData };
+      
+      // Ensure metrics is a valid object for JSONB storage
+      if (updatedData.metrics && Object.keys(updatedData.metrics).length === 0) {
+        updatedData.metrics = null;
+      }
+      
+      // Ensure arrays are properly initialized
+      updatedData.tags = updatedData.tags || [];
+      updatedData.team_members = updatedData.team_members || [];
+      updatedData.technologies = updatedData.technologies || [];
+      updatedData.awards = updatedData.awards || [];
+      updatedData.key_features = updatedData.key_features || [];
+      updatedData.gallery_images = updatedData.gallery_images || [];
       
       // Upload image if a new one was selected
       if (imageFile) {
