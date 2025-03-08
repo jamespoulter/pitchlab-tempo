@@ -9,6 +9,8 @@ export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
   const fullName = formData.get("full_name")?.toString() || '';
+  const planId = formData.get("plan_id")?.toString();
+  const trialDays = formData.get("trial_days")?.toString();
   const supabase = await createClient();
   const origin = headers().get("origin");
 
@@ -38,7 +40,6 @@ export const signUpAction = async (formData: FormData) => {
 
   if (user) {
     try {
-
       const { error: updateError } = await supabase
         .from('users')
         .insert({
@@ -52,6 +53,34 @@ export const signUpAction = async (formData: FormData) => {
 
       if (updateError) {
         // Error handling without console.error
+      }
+      
+      // If a plan was selected, proceed to checkout
+      if (planId) {
+        try {
+          const trialPeriodDays = parseInt(trialDays || "7");
+          
+          const { data: checkoutData, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
+            body: {
+              price_id: planId,
+              user_id: user.id,
+              return_url: `${origin}/dashboard`,
+              trial_period_days: trialPeriodDays,
+            },
+            headers: {
+              'X-Customer-Email': email || '',
+            }
+          });
+          
+          if (checkoutError) {
+            // Handle checkout error but still continue with signup success
+          } else if (checkoutData?.url) {
+            // Redirect to Stripe checkout
+            return redirect(checkoutData.url);
+          }
+        } catch (checkoutErr) {
+          // Handle checkout error but still continue with signup success
+        }
       }
     } catch (err) {
       // Error handling without console.error

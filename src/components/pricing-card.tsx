@@ -54,12 +54,6 @@ export default function PricingCard({ item, user }: {
 
     // Handle checkout process
     const handleCheckout = async (priceId: string) => {
-        if (!user) {
-            // Redirect to login if user is not authenticated
-            window.location.href = "/login?redirect=pricing";
-            return;
-        }
-
         setIsLoading(true);
 
         try {
@@ -68,34 +62,45 @@ export default function PricingCard({ item, user }: {
             
             console.log("Creating checkout session with:", {
                 price_id: priceId,
-                user_id: user.id,
+                user_id: user?.id || null,
                 trial_period_days: trialPeriodDays
             });
             
-            const { data, error } = await supabase.functions.invoke('create-checkout', {
-                body: {
-                    price_id: priceId,
-                    user_id: user.id,
-                    return_url: `${window.location.origin}/dashboard`,
-                    trial_period_days: trialPeriodDays,
-                },
-                headers: {
-                    'X-Customer-Email': user.email || '',
+            if (user) {
+                // User is logged in, proceed with normal checkout
+                const { data, error } = await supabase.functions.invoke('create-checkout', {
+                    body: {
+                        price_id: priceId,
+                        user_id: user.id,
+                        return_url: `${window.location.origin}/dashboard`,
+                        trial_period_days: trialPeriodDays,
+                    },
+                    headers: {
+                        'X-Customer-Email': user.email || '',
+                    }
+                });
+
+                if (error) {
+                    console.error("Checkout error:", error);
+                    throw error;
                 }
-            });
 
-            if (error) {
-                console.error("Checkout error:", error);
-                throw error;
-            }
+                console.log("Checkout response:", data);
 
-            console.log("Checkout response:", data);
-
-            // Redirect to Stripe checkout
-            if (data?.url) {
-                window.location.href = data.url;
+                // Redirect to Stripe checkout
+                if (data?.url) {
+                    window.location.href = data.url;
+                } else {
+                    throw new Error('No checkout URL returned');
+                }
             } else {
-                throw new Error('No checkout URL returned');
+                // User is not logged in, redirect to signup with plan info
+                // Store the selected plan in localStorage
+                localStorage.setItem('selectedPlanId', priceId);
+                localStorage.setItem('trialPeriodDays', trialPeriodDays.toString());
+                
+                // Redirect to signup page with plan info in URL
+                window.location.href = `/signup?plan=${priceId}&trial=${trialPeriodDays}`;
             }
         } catch (error) {
             console.error('Error creating checkout session:', error);
