@@ -1,5 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
-import { AgencyProfile, AgencyProfileFormData, AgencyBranding, AgencyAsset, AgencyAssetFormData, AgencyCredential, AgencyCredentialFormData, CaseStudy, CaseStudyFormData } from "@/types/agency";
+import { AgencyProfile, AgencyProfileFormData, AgencyBranding, AgencyAsset, AgencyAssetFormData, AgencyCredential, AgencyCredentialFormData, CaseStudy, CaseStudyFormData, TeamMember, TeamMemberFormData } from "@/types/agency";
 
 // Create a Supabase client for browser-side operations
 export const createClient = () => {
@@ -951,4 +951,195 @@ export async function uploadCaseStudyImage(file: File): Promise<{ success: boole
     console.error("Unexpected error uploading case study image:", error);
     return { success: false, error };
   }
+}
+
+// Team Member Functions
+
+/**
+ * Fetches all team members for the current authenticated user
+ */
+export async function getTeamMembers(): Promise<TeamMember[]> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return [];
+  }
+  
+  // Get all team members for the user
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false });
+  
+  if (error) {
+    console.error("Error fetching team members:", error);
+    return [];
+  }
+  
+  return data || [];
+}
+
+/**
+ * Fetches a team member by ID for the current authenticated user
+ */
+export async function getTeamMemberById(teamMemberId: string): Promise<TeamMember | null> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return null;
+  }
+  
+  // Get the team member
+  const { data, error } = await supabase
+    .from("team_members")
+    .select("*")
+    .eq("id", teamMemberId)
+    .eq("user_id", user.id)
+    .single();
+  
+  if (error) {
+    console.error("Error fetching team member:", error);
+    return null;
+  }
+  
+  return data;
+}
+
+/**
+ * Creates a new team member for the current authenticated user
+ */
+export async function createTeamMember(teamMemberData: TeamMemberFormData): Promise<{ success: boolean; data?: TeamMember; error?: any }> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Prepare the data with the user_id
+  const data = {
+    ...teamMemberData,
+    user_id: user.id,
+  };
+  
+  // Create the team member
+  const { data: newTeamMember, error } = await supabase
+    .from("team_members")
+    .insert(data)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error creating team member:", error);
+    return { success: false, error };
+  }
+  
+  return { success: true, data: newTeamMember };
+}
+
+/**
+ * Updates a team member for the current authenticated user
+ */
+export async function updateTeamMember(teamMemberId: string, teamMemberData: Partial<TeamMemberFormData>): Promise<{ success: boolean; data?: TeamMember; error?: any }> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Update the team member
+  const { data, error } = await supabase
+    .from("team_members")
+    .update(teamMemberData)
+    .eq("id", teamMemberId)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error updating team member:", error);
+    return { success: false, error };
+  }
+  
+  return { success: true, data };
+}
+
+/**
+ * Deletes a team member for the current authenticated user
+ */
+export async function deleteTeamMember(teamMemberId: string): Promise<{ success: boolean; error?: any }> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Delete the team member
+  const { error } = await supabase
+    .from("team_members")
+    .delete()
+    .eq("id", teamMemberId)
+    .eq("user_id", user.id);
+  
+  if (error) {
+    console.error("Error deleting team member:", error);
+    return { success: false, error };
+  }
+  
+  return { success: true };
+}
+
+/**
+ * Uploads a team member avatar to Supabase storage and returns the public URL
+ */
+export async function uploadTeamMemberAvatar(file: File): Promise<{ success: boolean; url?: string; error?: any }> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Upload the file to Supabase Storage
+  const { data, error } = await supabase.storage
+    .from("team-avatars")
+    .upload(`${user.id}/${Date.now()}-${file.name}`, file, {
+      cacheControl: "3600",
+      upsert: true,
+    });
+  
+  if (error) {
+    console.error("Error uploading avatar:", error);
+    return { success: false, error };
+  }
+  
+  // Get the public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from("team-avatars")
+    .getPublicUrl(data.path);
+  
+  return { success: true, url: publicUrl };
 } 

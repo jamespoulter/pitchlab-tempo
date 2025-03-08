@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -21,6 +21,7 @@ import {
   Trash,
   ExternalLink,
   Briefcase,
+  Loader2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -30,86 +31,103 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AddTeamMemberModal } from "@/components/modals/add-team-member-modal";
 import { useRouter } from "next/navigation";
+import { getTeamMembers, deleteTeamMember, createTeamMember } from "@/utils/supabase-client";
+import { TeamMember } from "@/types/agency";
+import { toast } from "sonner";
 
 export default function TeamPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState("a-z");
   const router = useRouter();
 
-  // This would normally fetch real data from the database
-  const teamMembers = [
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      role: "Creative Director",
-      email: "sarah@example.com",
-      phone: "+1 (555) 123-4567",
-      bio: "Over 10 years of experience in brand strategy and creative direction for Fortune 500 companies.",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah",
-      skills: ["Brand Strategy", "Creative Direction", "Team Leadership"],
-    },
-    {
-      id: 2,
-      name: "Michael Chen",
-      role: "Lead Developer",
-      email: "michael@example.com",
-      phone: "+1 (555) 234-5678",
-      bio: "Full-stack developer with expertise in React, Node.js, and cloud architecture.",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Michael",
-      skills: ["React", "Node.js", "AWS", "Database Design"],
-    },
-    {
-      id: 3,
-      name: "Jessica Rivera",
-      role: "Marketing Strategist",
-      email: "jessica@example.com",
-      phone: "+1 (555) 345-6789",
-      bio: "Digital marketing expert specializing in data-driven campaign optimization and growth strategies.",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica",
-      skills: ["SEO", "Content Strategy", "Analytics", "PPC"],
-    },
-    {
-      id: 4,
-      name: "David Kim",
-      role: "UX/UI Designer",
-      email: "david@example.com",
-      phone: "+1 (555) 456-7890",
-      bio: "Award-winning designer focused on creating intuitive and engaging user experiences.",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=David",
-      skills: ["UI Design", "User Research", "Prototyping", "Figma"],
-    },
-    {
-      id: 5,
-      name: "Emily Wilson",
-      role: "Content Strategist",
-      email: "emily@example.com",
-      phone: "+1 (555) 567-8901",
-      bio: "Experienced content creator with a background in journalism and brand storytelling.",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Emily",
-      skills: ["Content Creation", "Copywriting", "Editorial Planning"],
-    },
-    {
-      id: 6,
-      name: "James Thompson",
-      role: "Account Manager",
-      email: "james@example.com",
-      phone: "+1 (555) 678-9012",
-      bio: "Client relationship specialist with a track record of growing accounts and delivering exceptional service.",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=James",
-      skills: [
-        "Client Relations",
-        "Project Management",
-        "Business Development",
-      ],
-    },
-  ];
+  // Fetch team members on component mount
+  useEffect(() => {
+    fetchTeamMembers();
+  }, []);
 
-  const handleViewTeamMember = (id: number) => {
+  const fetchTeamMembers = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getTeamMembers();
+      setTeamMembers(data);
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      toast.error("Failed to load team members");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleViewTeamMember = (id: string) => {
     router.push(`/dashboard/team/${id}`);
   };
 
-  const handleEditTeamMember = (id: number) => {
+  const handleEditTeamMember = (id: string) => {
     router.push(`/dashboard/team/${id}?edit=true`);
   };
+
+  const handleDeleteTeamMember = async (id: string) => {
+    if (confirm("Are you sure you want to delete this team member?")) {
+      try {
+        const { success, error } = await deleteTeamMember(id);
+        if (success) {
+          toast.success("Team member deleted successfully");
+          // Refresh the team members list
+          fetchTeamMembers();
+        } else {
+          toast.error("Failed to delete team member");
+          console.error("Error deleting team member:", error);
+        }
+      } catch (error) {
+        toast.error("An error occurred");
+        console.error("Error deleting team member:", error);
+      }
+    }
+  };
+
+  const handleSaveTeamMember = async (teamMemberData: any) => {
+    try {
+      const { success, data, error } = await createTeamMember(teamMemberData);
+      if (success && data) {
+        toast.success("Team member added successfully");
+        // Refresh the team members list
+        fetchTeamMembers();
+      } else {
+        toast.error("Failed to add team member");
+        console.error("Error adding team member:", error);
+      }
+    } catch (error) {
+      toast.error("An error occurred");
+      console.error("Error adding team member:", error);
+    }
+  };
+
+  // Filter team members based on search query
+  const filteredTeamMembers = teamMembers.filter((member) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      member.name.toLowerCase().includes(query) ||
+      member.role.toLowerCase().includes(query) ||
+      member.email.toLowerCase().includes(query) ||
+      member.skills.some((skill) => skill.toLowerCase().includes(query))
+    );
+  });
+
+  // Sort team members based on sort order
+  const sortedTeamMembers = [...filteredTeamMembers].sort((a, b) => {
+    if (sortOrder === "a-z") {
+      return a.name.localeCompare(b.name);
+    } else if (sortOrder === "z-a") {
+      return b.name.localeCompare(a.name);
+    } else if (sortOrder === "role") {
+      return a.role.localeCompare(b.role);
+    }
+    return 0;
+  });
 
   return (
     <div className="space-y-6">
@@ -139,6 +157,8 @@ export default function TeamPage() {
                   type="search"
                   placeholder="Search team members..."
                   className="pl-8 h-9 w-full md:w-[300px] rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
               <Button variant="outline" size="sm" className="h-9">
@@ -147,7 +167,11 @@ export default function TeamPage() {
               </Button>
             </div>
             <div className="flex items-center gap-2">
-              <select className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors">
+              <select 
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value)}
+              >
                 <option value="a-z">A-Z</option>
                 <option value="z-a">Z-A</option>
                 <option value="role">By Role</option>
@@ -156,201 +180,135 @@ export default function TeamPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {teamMembers.map((member) => (
-              <div
-                key={member.id}
-                className="border rounded-lg overflow-hidden group hover:shadow-md transition-all"
-              >
-                <div className="p-6 flex flex-col items-center text-center">
-                  <div 
-                    className="w-24 h-24 rounded-full overflow-hidden mb-4 cursor-pointer"
-                    onClick={() => handleViewTeamMember(member.id)}
-                  >
-                    <img
-                      src={member.avatar}
-                      alt={member.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <h3 
-                    className="font-semibold text-lg cursor-pointer hover:text-blue-600"
-                    onClick={() => handleViewTeamMember(member.id)}
-                  >
-                    {member.name}
-                  </h3>
-                  <p className="text-blue-600 font-medium text-sm mb-3">
-                    {member.role}
-                  </p>
-                  <div className="flex flex-wrap justify-center gap-1 mb-4">
-                    {member.skills.map((skill, index) => (
-                      <span
-                        key={index}
-                        className="text-xs px-2 py-1 bg-gray-100 rounded-full"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
-                    {member.bio}
-                  </p>
-                  <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Mail className="h-3.5 w-3.5" />
-                      <span>{member.email}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Phone className="h-3.5 w-3.5" />
-                      <span>{member.phone}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t p-3 flex justify-between items-center bg-gray-50">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleViewTeamMember(member.id)}
-                  >
-                    <Users className="h-3.5 w-3.5 mr-1" />
-                    View Profile
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEditTeamMember(member.id)}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleViewTeamMember(member.id)}>
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        View Profile
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Trash className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-            ))}
-            <div className="border rounded-lg overflow-hidden border-dashed flex items-center justify-center p-8 h-full">
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-3">
-                  <Users className="h-6 w-6 text-blue-600" />
-                </div>
-                <h3 className="font-medium mb-1">Add New Team Member</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Showcase your agency's talent
-                </p>
-                <Button 
-                  size="sm"
-                  onClick={() => setIsAddModalOpen(true)}
+          {isLoading ? (
+            <div className="flex justify-center items-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : sortedTeamMembers.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {sortedTeamMembers.map((member) => (
+                <div
+                  key={member.id}
+                  className="border rounded-lg overflow-hidden group hover:shadow-md transition-all"
                 >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Team Member
-                </Button>
+                  <div className="p-6 flex flex-col items-center text-center">
+                    <div 
+                      className="w-24 h-24 rounded-full overflow-hidden mb-4 cursor-pointer"
+                      onClick={() => handleViewTeamMember(member.id!)}
+                    >
+                      <img
+                        src={member.avatar}
+                        alt={member.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <h3 
+                      className="font-semibold text-lg cursor-pointer hover:text-blue-600"
+                      onClick={() => handleViewTeamMember(member.id!)}
+                    >
+                      {member.name}
+                    </h3>
+                    <p className="text-blue-600 font-medium text-sm mb-3">
+                      {member.role}
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-1 mb-4">
+                      {member.skills.map((skill, index) => (
+                        <span
+                          key={index}
+                          className="text-xs px-2 py-1 bg-gray-100 rounded-full"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-4 line-clamp-3">
+                      {member.bio}
+                    </p>
+                    <div className="flex items-center justify-center gap-3 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <Mail className="h-3.5 w-3.5" />
+                        <span>{member.email}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Phone className="h-3.5 w-3.5" />
+                        <span>{member.phone}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="border-t p-3 flex justify-between items-center bg-gray-50">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleViewTeamMember(member.id!)}
+                    >
+                      <Users className="h-3.5 w-3.5 mr-1" />
+                      View Profile
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEditTeamMember(member.id!)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleViewTeamMember(member.id!)}>
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          View Profile
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleDeleteTeamMember(member.id!)}>
+                          <Trash className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </div>
+              ))}
+              <div 
+                className="border rounded-lg overflow-hidden border-dashed flex items-center justify-center p-8 h-full cursor-pointer hover:bg-gray-50"
+                onClick={() => setIsAddModalOpen(true)}
+              >
+                <div className="text-center">
+                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-3">
+                    <Users className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <h3 className="font-medium mb-1">Add New Team Member</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Showcase your agency's talent
+                  </p>
+                  <Button variant="outline" size="sm">
+                    <Plus className="h-3.5 w-3.5 mr-1" />
+                    Add Member
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Team Organization</CardTitle>
-          <CardDescription>
-            Organize your team by departments and roles
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {[
-              {
-                name: "Creative",
-                members: teamMembers.filter((m) =>
-                  ["Creative Director", "UX/UI Designer"].includes(m.role),
-                ),
-              },
-              {
-                name: "Development",
-                members: teamMembers.filter((m) =>
-                  ["Lead Developer"].includes(m.role),
-                ),
-              },
-              {
-                name: "Marketing",
-                members: teamMembers.filter((m) =>
-                  ["Marketing Strategist", "Content Strategist"].includes(
-                    m.role,
-                  ),
-                ),
-              },
-              {
-                name: "Account Management",
-                members: teamMembers.filter((m) =>
-                  ["Account Manager"].includes(m.role),
-                ),
-              },
-            ].map((department, index) => (
-              <div key={index} className="border rounded-md overflow-hidden">
-                <div className="bg-muted/50 p-3 font-medium border-b">
-                  {department.name} Department
-                </div>
-                <div className="divide-y">
-                  {department.members.map((member) => (
-                    <div
-                      key={member.id}
-                      className="p-3 flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full overflow-hidden">
-                          <img
-                            src={member.avatar}
-                            alt={member.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <div>
-                          <p className="font-medium">{member.name}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {member.role}
-                          </p>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleEditTeamMember(member.id)}
-                      >
-                        <Edit className="h-3.5 w-3.5 mr-1" />
-                        Edit Role
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <Users className="h-8 w-8 text-gray-400" />
               </div>
-            ))}
-            <Button variant="outline" className="w-full">
-              <Plus className="h-4 w-4 mr-1" />
-              Add New Department
-            </Button>
-          </div>
+              <h3 className="text-lg font-medium mb-2">No Team Members Yet</h3>
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                Add your first team member to showcase your agency's talent and expertise.
+              </p>
+              <Button onClick={() => setIsAddModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Team Member
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <AddTeamMemberModal
         open={isAddModalOpen}
         onOpenChange={setIsAddModalOpen}
-        onSave={(teamMember) => {
-          console.log("New team member:", teamMember);
-          // Here you would normally save the data to your database
-        }}
+        onSave={handleSaveTeamMember}
       />
     </div>
   );

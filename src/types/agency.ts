@@ -198,4 +198,53 @@ export interface CaseStudyFormData {
   metrics?: Record<string, string> | null;
   gallery_images?: string[];
   video_url?: string | null;
+}
+
+// Team Member Types
+export interface TeamMember {
+  id?: string;
+  user_id?: string;
+  name: string;
+  role: string;
+  email: string;
+  phone: string;
+  bio: string;
+  avatar: string;
+  skills: string[];
+  education?: {
+    degree: string;
+    institution: string;
+    year: string;
+  }[];
+  experience?: {
+    position: string;
+    company: string;
+    duration: string;
+  }[];
+  projects?: string[];
+  certifications?: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TeamMemberFormData {
+  name: string;
+  role: string;
+  email: string;
+  phone: string;
+  bio: string;
+  avatar: string;
+  skills: string[];
+  education?: {
+    degree: string;
+    institution: string;
+    year: string;
+  }[];
+  experience?: {
+    position: string;
+    company: string;
+    duration: string;
+  }[];
+  projects?: string[];
+  certifications?: string[];
 } 

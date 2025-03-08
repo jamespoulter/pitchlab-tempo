@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { X, Plus, Upload, Camera } from "lucide-react";
+import { X, Plus, Upload, Camera, Loader2 } from "lucide-react";
+import { uploadTeamMemberAvatar } from "@/utils/supabase-client";
+import { toast } from "sonner";
 
 interface AddTeamMemberModalProps {
   open?: boolean;
@@ -28,6 +30,8 @@ export function AddTeamMemberModal({
   const [avatar, setAvatar] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Handle avatar file selection
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,10 +43,32 @@ export function AddTeamMemberModal({
       const reader = new FileReader();
       reader.onloadend = () => {
         setAvatarPreview(reader.result as string);
-        // Set the avatar state to the preview URL
-        setAvatar(reader.result as string);
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const uploadAvatar = async () => {
+    if (!avatarFile) return null;
+    
+    setIsUploading(true);
+    try {
+      const { success, url, error } = await uploadTeamMemberAvatar(avatarFile);
+      
+      if (success && url) {
+        setAvatar(url);
+        return url;
+      } else {
+        console.error("Error uploading avatar:", error);
+        toast.error("Failed to upload avatar");
+        return null;
+      }
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      toast.error("An error occurred while uploading avatar");
+      return null;
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -57,35 +83,52 @@ export function AddTeamMemberModal({
     setSkills(skills.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
-    const teamMember = {
-      name,
-      role,
-      email,
-      phone,
-      bio,
-      skills,
-      avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
-    };
-    
-    onSave?.(teamMember);
-    
-    // Reset form
-    setName("");
-    setRole("");
-    setEmail("");
-    setPhone("");
-    setBio("");
-    setSkills([]);
-    setNewSkill("");
-    setAvatar("");
-    setAvatarFile(null);
-    setAvatarPreview(null);
-    
-    // Close modal
-    onOpenChange?.(false);
+    try {
+      // Upload avatar if there's a file
+      let avatarUrl = avatar;
+      if (avatarFile) {
+        avatarUrl = await uploadAvatar() || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
+      } else if (!avatar) {
+        // Use default avatar if no file and no existing avatar
+        avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`;
+      }
+      
+      const teamMember = {
+        name,
+        role,
+        email,
+        phone,
+        bio,
+        skills,
+        avatar: avatarUrl,
+      };
+      
+      onSave?.(teamMember);
+      
+      // Reset form
+      setName("");
+      setRole("");
+      setEmail("");
+      setPhone("");
+      setBio("");
+      setSkills([]);
+      setNewSkill("");
+      setAvatar("");
+      setAvatarFile(null);
+      setAvatarPreview(null);
+      
+      // Close modal
+      onOpenChange?.(false);
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      toast.error("An error occurred while saving team member");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!open) return null;
@@ -99,6 +142,7 @@ export function AddTeamMemberModal({
             variant="ghost"
             size="icon"
             onClick={() => onOpenChange?.(false)}
+            disabled={isSubmitting || isUploading}
           >
             <X className="h-4 w-4" />
           </Button>
@@ -109,7 +153,11 @@ export function AddTeamMemberModal({
             <div className="md:col-span-1">
               <div className="flex flex-col items-center">
                 <div className="w-32 h-32 rounded-full overflow-hidden mb-4 relative group">
-                  {avatarPreview ? (
+                  {isUploading ? (
+                    <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                    </div>
+                  ) : avatarPreview ? (
                     <img
                       src={avatarPreview}
                       alt="Avatar preview"
@@ -131,6 +179,7 @@ export function AddTeamMemberModal({
                       accept="image/*"
                       className="hidden"
                       onChange={handleAvatarChange}
+                      disabled={isUploading || isSubmitting}
                     />
                   </div>
                 </div>
@@ -150,6 +199,7 @@ export function AddTeamMemberModal({
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Sarah Johnson"
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
                 <div className="space-y-2">
@@ -160,6 +210,7 @@ export function AddTeamMemberModal({
                     onChange={(e) => setRole(e.target.value)}
                     placeholder="Creative Director"
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -174,6 +225,7 @@ export function AddTeamMemberModal({
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="sarah@example.com"
                     required
+                    disabled={isSubmitting}
                   />
                 </div>
                 <div className="space-y-2">
@@ -183,6 +235,7 @@ export function AddTeamMemberModal({
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+1 (555) 123-4567"
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -195,6 +248,7 @@ export function AddTeamMemberModal({
                   onChange={(e) => setBio(e.target.value)}
                   placeholder="Brief professional biography..."
                   rows={4}
+                  disabled={isSubmitting}
                 />
               </div>
               
@@ -211,8 +265,13 @@ export function AddTeamMemberModal({
                         addSkill();
                       }
                     }}
+                    disabled={isSubmitting}
                   />
-                  <Button type="button" onClick={addSkill}>
+                  <Button 
+                    type="button" 
+                    onClick={addSkill}
+                    disabled={isSubmitting}
+                  >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -228,6 +287,7 @@ export function AddTeamMemberModal({
                         type="button"
                         onClick={() => removeSkill(index)}
                         className="text-blue-700 hover:text-blue-900 focus:outline-none"
+                        disabled={isSubmitting}
                       >
                         <X className="h-3 w-3" />
                       </button>
@@ -243,11 +303,23 @@ export function AddTeamMemberModal({
               type="button"
               variant="outline"
               onClick={() => onOpenChange?.(false)}
+              disabled={isSubmitting || isUploading}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!name || !role}>
-              Add Team Member
+            <Button 
+              type="submit" 
+              disabled={!name || !role || isSubmitting || isUploading}
+              className="relative"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Add Team Member"
+              )}
             </Button>
           </div>
         </form>
