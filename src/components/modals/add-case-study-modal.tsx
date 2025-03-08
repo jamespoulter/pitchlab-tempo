@@ -246,6 +246,15 @@ export function AddCaseStudyModal({
       dataToSubmit.key_features = dataToSubmit.key_features || [];
       dataToSubmit.gallery_images = dataToSubmit.gallery_images || [];
       
+      // Handle empty date fields - convert empty strings to null
+      if (dataToSubmit.start_date === "") dataToSubmit.start_date = null;
+      if (dataToSubmit.end_date === "") dataToSubmit.end_date = null;
+      
+      // Ensure the required date field is valid
+      if (dataToSubmit.date === "") {
+        dataToSubmit.date = new Date().toISOString().split("T")[0]; // Use today's date as fallback
+      }
+      
       // Upload image if one was selected
       if (imageFile) {
         console.log("Uploading case study image...");

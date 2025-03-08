@@ -788,13 +788,22 @@ export async function createCaseStudy(caseStudyData: CaseStudyFormData): Promise
   console.log("Current user ID for case study creation:", user.id);
   
   try {
+    // Prepare data - ensure date fields are properly formatted
+    const preparedData = {
+      ...caseStudyData,
+      user_id: user.id,
+      // Ensure date fields are valid
+      date: caseStudyData.date || new Date().toISOString().split("T")[0],
+      start_date: caseStudyData.start_date || null,
+      end_date: caseStudyData.end_date || null
+    };
+    
+    console.log("Prepared data for case study creation:", preparedData);
+    
     // Create the case study
     const { data, error } = await supabase
       .from("case_studies")
-      .insert({
-        ...caseStudyData,
-        user_id: user.id
-      })
+      .insert(preparedData)
       .select()
       .single();
     
@@ -830,10 +839,21 @@ export async function updateCaseStudy(caseStudyId: string, caseStudyData: Partia
   }
   
   try {
+    // Prepare data - ensure date fields are properly formatted
+    const preparedData = {
+      ...caseStudyData,
+      // Ensure date fields are valid if they exist in the update data
+      ...(caseStudyData.date !== undefined && { date: caseStudyData.date || new Date().toISOString().split("T")[0] }),
+      ...(caseStudyData.start_date !== undefined && { start_date: caseStudyData.start_date || null }),
+      ...(caseStudyData.end_date !== undefined && { end_date: caseStudyData.end_date || null })
+    };
+    
+    console.log("Prepared data for case study update:", preparedData);
+    
     // Update the case study
     const { data, error } = await supabase
       .from("case_studies")
-      .update(caseStudyData)
+      .update(preparedData)
       .eq("id", caseStudyId)
       .eq("user_id", user.id)
       .select()

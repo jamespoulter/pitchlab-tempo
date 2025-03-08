@@ -236,6 +236,15 @@ export default function CaseStudyPage({ params }: { params: { id: string } }) {
       updatedData.key_features = updatedData.key_features || [];
       updatedData.gallery_images = updatedData.gallery_images || [];
       
+      // Handle empty date fields - convert empty strings to null
+      if (updatedData.start_date === "") updatedData.start_date = null;
+      if (updatedData.end_date === "") updatedData.end_date = null;
+      
+      // Ensure the required date field is valid
+      if (updatedData.date === "") {
+        updatedData.date = new Date().toISOString().split("T")[0]; // Use today's date as fallback
+      }
+      
       // Upload image if a new one was selected
       if (imageFile) {
         const { success, url, error } = await uploadCaseStudyImage(imageFile);
