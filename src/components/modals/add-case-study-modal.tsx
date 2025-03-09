@@ -231,7 +231,7 @@ export function AddCaseStudyModal({
     setIsSubmitting(true);
     
     try {
-      let dataToSubmit = { ...formData };
+      const dataToSubmit = { ...formData };
       
       // Ensure metrics is a valid object for JSONB storage
       if (dataToSubmit.metrics && Object.keys(dataToSubmit.metrics).length === 0) {

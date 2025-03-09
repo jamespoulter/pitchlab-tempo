@@ -119,7 +119,7 @@ export default function ServicesPage() {
   });
 
   // Get unique categories for the filter dropdown
-  const categories = ["all", ...new Set(services.map(service => service.category.toLowerCase()))];
+  const categories = ["all", ...Array.from(new Set(services.map(service => service.category.toLowerCase())))];
 
   return (
     <div className="space-y-6">

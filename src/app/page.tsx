@@ -638,13 +638,18 @@ export default function Home() {
                 <Badge className="bg-white text-blue-700 hover:bg-white mb-2">
                   Early Bird Offer
                 </Badge>
-                <h3 className="text-2xl font-heading font-bold">PitchHub Premium</h3>
+                <div className="flex flex-col items-center mb-8">
+                  <div className="bg-blue-100 text-blue-800 rounded-full px-4 py-1 text-sm font-medium mb-2">
+                    Most Popular
+                  </div>
+                  <h3 className="text-2xl font-heading font-bold">PitchHub Plus</h3>
+                  <div className="mt-2 flex items-baseline gap-2">
+                    <span className="text-5xl font-heading font-bold">£45</span>
+                    <span className="text-gray-500 ml-2">/month per user</span>
+                  </div>
+                </div>
               </div>
               <div className="p-8">
-                <div className="flex justify-center items-baseline mb-6">
-                  <span className="text-5xl font-heading font-bold">£45</span>
-                  <span className="text-gray-500 ml-2">/month per user</span>
-                </div>
                 <motion.ul 
                   initial="hidden"
                   whileInView="visible"

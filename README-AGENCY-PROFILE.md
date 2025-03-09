@@ -1,6 +1,6 @@
 # Agency Profile Functionality
 
-This document explains how the agency profile functionality works in the PitchLab Tempo application.
+This document explains how the agency profile functionality works in the PitchHub Tempo application.
 
 ## Overview
 

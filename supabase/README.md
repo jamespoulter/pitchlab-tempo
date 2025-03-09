@@ -1,6 +1,6 @@
-# Supabase Setup for PitchLab Tempo
+# Supabase Setup for PitchHub Tempo
 
-This directory contains the necessary SQL migrations to set up the Supabase database for the PitchLab Tempo application.
+This directory contains the necessary SQL migrations to set up the Supabase database for the PitchHub Tempo application.
 
 ## Database Schema
 

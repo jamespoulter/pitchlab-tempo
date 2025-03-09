@@ -126,7 +126,7 @@ export default function PricingCard({ item, user }: {
                         Most Popular
                     </div>
                 )}
-                <CardTitle className="text-2xl font-bold tracking-tight text-gray-900">{item.product?.name || "Pitchhub Premium"}</CardTitle>
+                <CardTitle className="text-2xl font-bold tracking-tight text-gray-900">{item.product?.name || "PitchHub Plus"}</CardTitle>
                 <CardDescription className="flex items-baseline gap-2 mt-2">
                     <span className="text-4xl font-bold text-gray-900">{formatAmount(item.amount, item.currency)}</span>
                     <span className="text-gray-600">/{item.interval || "month"}</span>

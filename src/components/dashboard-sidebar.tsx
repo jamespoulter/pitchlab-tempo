@@ -121,7 +121,7 @@ export default function DashboardSidebar() {
           <div className="bg-blue-600 text-white p-1 rounded">
             <FileText className="h-4 w-4" />
           </div>
-          <span className="text-lg font-bold">ProposalPro</span>
+          <span className="text-lg font-bold">PitchHub</span>
         </Link>
         
         {subscriptionInfo.isSubscribed && (

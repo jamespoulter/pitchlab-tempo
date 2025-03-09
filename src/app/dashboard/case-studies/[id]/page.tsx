@@ -221,7 +221,7 @@ export default function CaseStudyPage({ params }: { params: { id: string } }) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      let updatedData = { ...formData };
+      const updatedData = { ...formData };
       
       // Ensure metrics is a valid object for JSONB storage
       if (updatedData.metrics && Object.keys(updatedData.metrics).length === 0) {

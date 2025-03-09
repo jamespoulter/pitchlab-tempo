@@ -234,7 +234,7 @@ export default function AddCaseStudyPage() {
     setIsSubmitting(true);
     
     try {
-      let dataToSubmit = { ...formData };
+      const dataToSubmit = { ...formData };
       
       // Upload image if one was selected
       if (imageFile) {

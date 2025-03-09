@@ -62,14 +62,14 @@ export default async function Pricing() {
     // Use the new function name and get plans for the specific product
     const { data: allPlans, error } = await supabase.functions.invoke('get-plans', {
         body: {
-            product_id: "prod_RuEdYVyOF1Vitg" // Pitchhub Premium product ID
+            product_id: "prod_RuEdYVyOF1Vitg" // PitchHub Plus product ID
         }
     });
     
-    // Filter to only show the Pitchhub Premium product
+    // Filter to only show the PitchHub Plus product
     const plans = allPlans?.filter((plan: Plan) => 
         plan.product?.id === "prod_RuEdYVyOF1Vitg" || 
-        plan.product?.name === "Pitchhub Premium"
+        plan.product?.name === "PitchHub Plus"
     );
     
     // Extract common features for the comparison table

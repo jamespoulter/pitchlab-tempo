@@ -42,7 +42,8 @@
     "stripe": "^17.6.0",
     "supabase": "^2.15.8",
     "tempo-devtools": "^2.0.94",
-    "vaul": "^1.1.2"
+    "vaul": "^1.1.2",
+    "vercel": "^41.3.2"
   },
   "devDependencies": {
     "@types/node": "^20",

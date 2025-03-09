@@ -25,7 +25,7 @@ export default async function Signup(props: {
       "get-plans",
       {
         body: {
-          product_id: "prod_RuEdYVyOF1Vitg" // Pitchhub Premium product ID
+          product_id: "prod_RuEdYVyOF1Vitg" // PitchHub Plus product ID
         }
       }
     );
@@ -61,14 +61,14 @@ export default async function Signup(props: {
           {planDetails && (
             <Card className="mb-6 bg-blue-50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xl">Selected Plan: {planDetails.product?.name || "Pitchhub Premium"}</CardTitle>
+                <CardTitle className="text-xl">Selected Plan: {planDetails.product?.name || "PitchHub Plus"}</CardTitle>
                 <CardDescription className="text-lg font-semibold">
                   {formatAmount(planDetails.amount, planDetails.currency)}/{planDetails.interval || "month"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600 mb-2">
-                  {planDetails.product?.metadata?.description || "Full access to all Pitchhub Premium features"}
+                  {planDetails.product?.metadata?.description || "Full access to all PitchHub Plus features"}
                 </p>
                 <div className="flex items-center text-sm text-blue-600">
                   <Check size={16} className="mr-1" />

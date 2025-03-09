@@ -27,10 +27,10 @@ const defaultPlan = {
     interval_count: 1,
     product: {
         id: "prod_RuEdYVyOF1Vitg",
-        name: "Pitchhub Premium",
+        name: "PitchHub Plus",
         metadata: {
             trial_period_days: "7",
-            description: "Full access to all Pitchhub Premium features",
+            description: "Full access to all PitchHub Plus features",
             features: JSON.stringify([
                 { name: "Unlimited Pitches", included: true },
                 { name: "AI-Powered Content", included: true },
@@ -75,7 +75,7 @@ serve(async (req) => {
                 console.log("Product ID from body:", productId);
             } catch (e) {
                 console.log("Error parsing request body:", e);
-                productId = 'prod_RuEdYVyOF1Vitg'; // Default to Pitchhub Premium
+                productId = 'prod_RuEdYVyOF1Vitg'; // Default to PitchHub Plus
                 console.log("Using default product ID:", productId);
             }
         }
@@ -127,7 +127,7 @@ serve(async (req) => {
                 // Filter prices to find any related to our product
                 const relevantPrices = allPrices.data.filter(price => 
                     price.product.id === productId || 
-                    price.product.name === "Pitchhub Premium"
+                    price.product.name === "PitchHub Plus"
                 );
                 
                 console.log(`Found ${relevantPrices.length} relevant prices after filtering`);
