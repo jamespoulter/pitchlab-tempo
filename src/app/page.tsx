@@ -24,7 +24,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { createClient } from "../../supabase/client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 // Animation variants
 const fadeIn = {
@@ -62,15 +62,36 @@ export default function Home() {
   });
   const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
+  const [animationsTriggered, setAnimationsTriggered] = useState(false);
+  
+  // Reference to check if component is mounted
+  const isMounted = useRef(false);
   
   useEffect(() => {
+    // Set mounted flag
+    isMounted.current = true;
+    
+    // Trigger animations after a short delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      if (isMounted.current) {
+        setAnimationsTriggered(true);
+      }
+    }, 100);
+    
     const getUser = async () => {
       const supabase = createClient();
       const { data } = await supabase.auth.getUser();
-      setUser(data.user);
+      if (isMounted.current) {
+        setUser(data.user);
+      }
     };
     
     getUser();
+    
+    return () => {
+      isMounted.current = false;
+      clearTimeout(timer);
+    };
   }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,8 +261,7 @@ export default function Home() {
           <div className="max-w-4xl mx-auto text-center">
             <motion.div
               initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
+              animate={animationsTriggered ? "visible" : "hidden"}
               variants={fadeIn}
             >
               <Badge className="mb-4 bg-blue-100 text-blue-800 hover:bg-blue-100 px-3 py-1">
@@ -250,8 +270,7 @@ export default function Home() {
             </motion.div>
             <motion.h1 
               initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
+              animate={animationsTriggered ? "visible" : "hidden"}
               variants={slideUp}
               className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold tracking-tight mb-6"
             >
@@ -259,8 +278,7 @@ export default function Home() {
             </motion.h1>
             <motion.p 
               initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
+              animate={animationsTriggered ? "visible" : "hidden"}
               variants={slideUp}
               className="text-xl text-gray-600 mb-8 md:px-10"
             >
@@ -268,8 +286,7 @@ export default function Home() {
             </motion.p>
             <motion.div 
               initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true }}
+              animate={animationsTriggered ? "visible" : "hidden"}
               variants={fadeIn}
               className="flex flex-col sm:flex-row gap-4 justify-center"
             >

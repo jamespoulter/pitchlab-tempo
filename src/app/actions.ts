@@ -191,30 +191,69 @@ export const checkUserSubscription = async (userId: string) => {
   const supabase = await createClient();
 
   try {
+    console.log("Checking subscription for user:", userId);
+    
+    // First try to find an active subscription
     const { data: subscription, error } = await supabase
       .from('subscriptions')
-      .select('*, subscription_items(*)')
+      .select('*')
       .eq('user_id', userId)
       .eq('status', 'active')
       .single();
 
-    if (error || !subscription) {
+    if (error) {
+      console.log("No active subscription found, error:", error.message);
+      
+      // If no active subscription, check for trialing subscriptions
+      const { data: trialingSubscription, error: trialingError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('status', 'trialing')
+        .single();
+        
+      if (trialingError || !trialingSubscription) {
+        console.log("No trialing subscription found either");
+        return {
+          isSubscribed: false,
+          subscription: null,
+          trialEnd: null,
+          daysRemaining: 0,
+          isTrialing: false
+        };
+      }
+      
+      // Use the trialing subscription
+      console.log("Found trialing subscription:", trialingSubscription.id);
+      
+      // Calculate days remaining in trial
+      let daysRemaining = 0;
+      if (trialingSubscription.trial_end) {
+        const trialEnd = new Date(trialingSubscription.trial_end * 1000); // Convert from Unix timestamp
+        const today = new Date();
+        const diffTime = trialEnd.getTime() - today.getTime();
+        daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+      
       return {
-        isSubscribed: false,
-        subscription: null,
-        trialEnd: null,
-        daysRemaining: 0,
-        isTrialing: false
+        isSubscribed: true,
+        subscription: trialingSubscription,
+        trialEnd: trialingSubscription.trial_end,
+        daysRemaining,
+        isTrialing: true
       };
     }
 
+    // If we found an active subscription
+    console.log("Found active subscription:", subscription.id);
+    
     // Check if subscription is in trial period
-    const isTrialing = subscription.trial_end ? new Date(subscription.trial_end) > new Date() : false;
+    const isTrialing = subscription.trial_end ? new Date(subscription.trial_end * 1000) > new Date() : false;
     
     // Calculate days remaining in trial
     let daysRemaining = 0;
     if (isTrialing && subscription.trial_end) {
-      const trialEnd = new Date(subscription.trial_end);
+      const trialEnd = new Date(subscription.trial_end * 1000); // Convert from Unix timestamp
       const today = new Date();
       const diffTime = trialEnd.getTime() - today.getTime();
       daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));

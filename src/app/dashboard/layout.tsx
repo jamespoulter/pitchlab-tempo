@@ -3,6 +3,7 @@ import DashboardSidebar from "@/components/dashboard-sidebar";
 import { createClient } from "../../../supabase/server";
 import { redirect } from "next/navigation";
 import { checkUserSubscription } from "@/app/actions";
+import Script from "next/script";
 
 export default async function DashboardLayout({
   children,
@@ -21,17 +22,15 @@ export default async function DashboardLayout({
   
   // Check if user has an active subscription with trial information
   const subscriptionInfo = await checkUserSubscription(user.id);
-
-  // Add subscription info to the global window object for client components
-  const subscriptionScript = `
-    window.subscriptionInfo = ${JSON.stringify(subscriptionInfo)};
-  `;
+  
+  // Stringify the subscription info for client-side use
+  const subscriptionData = JSON.stringify(subscriptionInfo);
 
   return (
     <div className="flex h-screen bg-gray-50">
-      <script
-        dangerouslySetInnerHTML={{ __html: subscriptionScript }}
-      />
+      <Script id="subscription-data" strategy="afterInteractive">
+        {`window.subscriptionInfo = ${subscriptionData};`}
+      </Script>
       <DashboardSidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <DashboardNavbar />

@@ -40,7 +40,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning className={`${inter.variable} ${montserrat.variable} ${workSans.variable}`}>
-      <Script src="https://api.tempolabs.ai/proxy-asset?url=https://storage.googleapis.com/tempo-public-assets/error-handling.js" />
+      <head>
+        <Script id="animation-preload" strategy="beforeInteractive">
+          {`
+            // Preload animation libraries
+            window.framerMotionConfig = {
+              reducedMotion: 'user',
+              renderToDOM: true
+            };
+          `}
+        </Script>
+        <Script src="https://api.tempolabs.ai/proxy-asset?url=https://storage.googleapis.com/tempo-public-assets/error-handling.js" />
+      </head>
       <body className={inter.className}>
         {children}
         <TempoInit />

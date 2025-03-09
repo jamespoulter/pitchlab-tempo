@@ -39,58 +39,104 @@ export default function DashboardNavbar() {
 
   useEffect(() => {
     // Get subscription info from window object (set by server component)
-    if (typeof window !== 'undefined' && window.subscriptionInfo) {
-      setSubscriptionInfo(window.subscriptionInfo);
+    if (typeof window !== 'undefined') {
+      // Add a small delay to ensure the script has executed
+      const timer = setTimeout(() => {
+        if (window.subscriptionInfo) {
+          console.log("Found subscription info in window:", window.subscriptionInfo);
+          setSubscriptionInfo(window.subscriptionInfo);
+        } else {
+          console.log("No subscription info found in window, fetching directly");
+          getUser();
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    } else {
+      getUser();
     }
+  }, [supabase]);
+  
+  const getUser = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
     
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      
-      // Check if the user is an admin
-      const ADMIN_UUID = "1a737665-e3bd-47f7-8cd2-c5d2937a9689";
-      setIsAdmin(user ? user.id === ADMIN_UUID : false);
-      
-      // Only fetch subscription info if not already set from window object
-      if (!window.subscriptionInfo && user) {
-        try {
-          // Check if user has an active subscription
-          const { data: subscription } = await supabase
-            .from('subscriptions')
-            .select('*, subscription_items(*)')
-            .eq('user_id', user.id)
-            .eq('status', 'active')
-            .single();
+    // Check if the user is an admin
+    const ADMIN_UUID = "1a737665-e3bd-47f7-8cd2-c5d2937a9689";
+    setIsAdmin(user ? user.id === ADMIN_UUID : false);
+    
+    // Only fetch subscription info if not already set from window object
+    if (!window.subscriptionInfo && user) {
+      try {
+        // Check if user has an active subscription
+        const { data: subscription } = await supabase
+          .from('subscriptions')
+          .select('*')
+          .eq('user_id', user.id)
+          .eq('status', 'active')
+          .single();
+        
+        if (subscription) {
+          // Check if subscription is in trial period
+          const isTrialing = subscription.trial_end ? new Date(subscription.trial_end * 1000) > new Date() : false;
           
-          if (subscription) {
-            // Check if subscription is in trial period
-            const isTrialing = subscription.trial_end ? new Date(subscription.trial_end) > new Date() : false;
+          // Calculate days remaining in trial
+          let daysRemaining = 0;
+          if (isTrialing && subscription.trial_end) {
+            const trialEnd = new Date(subscription.trial_end * 1000);
+            const today = new Date();
+            const diffTime = trialEnd.getTime() - today.getTime();
+            daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          }
+          
+          const newSubscriptionInfo = {
+            isSubscribed: true,
+            subscription,
+            trialEnd: subscription.trial_end,
+            daysRemaining,
+            isTrialing
+          };
+          
+          console.log("Setting subscription info from fetch:", newSubscriptionInfo);
+          setSubscriptionInfo(newSubscriptionInfo);
+        } else {
+          // If no active subscription, check for trialing subscriptions
+          const { data: trialingSubscription } = await supabase
+            .from('subscriptions')
+            .select('*')
+            .eq('user_id', user.id)
+            .eq('status', 'trialing')
+            .single();
             
+          if (trialingSubscription) {
             // Calculate days remaining in trial
             let daysRemaining = 0;
-            if (isTrialing && subscription.trial_end) {
-              const trialEnd = new Date(subscription.trial_end);
+            if (trialingSubscription.trial_end) {
+              const trialEnd = new Date(trialingSubscription.trial_end * 1000);
               const today = new Date();
               const diffTime = trialEnd.getTime() - today.getTime();
               daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             }
             
-            setSubscriptionInfo({
+            const newSubscriptionInfo = {
               isSubscribed: true,
-              subscription,
-              trialEnd: subscription.trial_end,
+              subscription: trialingSubscription,
+              trialEnd: trialingSubscription.trial_end,
               daysRemaining,
-              isTrialing
-            });
+              isTrialing: true
+            };
+            
+            console.log("Setting trialing subscription info from fetch:", newSubscriptionInfo);
+            setSubscriptionInfo(newSubscriptionInfo);
+          } else {
+            console.log("No active or trialing subscription found");
           }
-        } catch (error) {
-          console.error("Error checking subscription:", error);
         }
+      } catch (error) {
+        console.error("Error checking subscription:", error);
       }
-    };
-    
-    getUser();
-  }, [supabase]);
+    }
+  };
 
   return (
     <nav className="w-full border-b border-gray-200 bg-white py-3">
@@ -125,13 +171,22 @@ export default function DashboardNavbar() {
           
           {subscriptionInfo.isSubscribed && (
             <div className="flex items-center gap-2">
-              <Badge variant="premium" className="bg-gradient-to-r from-blue-600 to-purple-600 text-white flex items-center gap-1">
+              <Badge 
+                variant="premium" 
+                className={`flex items-center gap-1 ${
+                  subscriptionInfo.isTrialing 
+                    ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white" 
+                    : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+                }`}
+              >
                 <Sparkles className="h-3 w-3" />
-                <span>PitchHub Plus</span>
+                <span>
+                  {subscriptionInfo.isTrialing ? "Free Trial" : "PitchHub Plus"}
+                </span>
               </Badge>
               
               {subscriptionInfo.isTrialing && subscriptionInfo.daysRemaining > 0 && (
-                <div className="flex items-center gap-1 text-xs text-gray-500">
+                <div className="flex items-center gap-1 text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full">
                   <Clock className="h-3 w-3" />
                   <span>{subscriptionInfo.daysRemaining} day{subscriptionInfo.daysRemaining !== 1 ? 's' : ''} left</span>
                 </div>
@@ -179,9 +234,9 @@ export default function DashboardNavbar() {
                 <DropdownMenuItem className="flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-blue-600" />
                   <div className="flex flex-col">
-                    <span>PitchHub Plus Active</span>
+                    <span>{subscriptionInfo.isTrialing ? "Free Trial Active" : "PitchHub Plus Active"}</span>
                     {subscriptionInfo.isTrialing && subscriptionInfo.daysRemaining > 0 && (
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-blue-600 font-medium">
                         {subscriptionInfo.daysRemaining} day{subscriptionInfo.daysRemaining !== 1 ? 's' : ''} left in trial
                       </span>
                     )}

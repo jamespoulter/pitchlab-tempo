@@ -14,8 +14,11 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  Sparkles,
+  Clock,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -85,6 +88,24 @@ export default function DashboardSidebar() {
   >({
     "agency-details": true,
   });
+  const [subscriptionInfo, setSubscriptionInfo] = useState<any>({
+    isSubscribed: false,
+    isTrialing: false,
+    daysRemaining: 0
+  });
+
+  useEffect(() => {
+    // Get subscription info from window object (set by server component)
+    if (typeof window !== 'undefined') {
+      const timer = setTimeout(() => {
+        if (window.subscriptionInfo) {
+          setSubscriptionInfo(window.subscriptionInfo);
+        }
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) => ({
@@ -102,6 +123,31 @@ export default function DashboardSidebar() {
           </div>
           <span className="text-lg font-bold">ProposalPro</span>
         </Link>
+        
+        {subscriptionInfo.isSubscribed && (
+          <div className="mt-3 flex items-center gap-2">
+            <Badge 
+              variant="premium" 
+              className={`flex items-center gap-1 ${
+                subscriptionInfo.isTrialing 
+                  ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white" 
+                  : "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
+              }`}
+            >
+              <Sparkles className="h-3 w-3" />
+              <span>
+                {subscriptionInfo.isTrialing ? "Free Trial" : "PitchHub Plus"}
+              </span>
+            </Badge>
+            
+            {subscriptionInfo.isTrialing && subscriptionInfo.daysRemaining > 0 && (
+              <div className="flex items-center gap-1 text-xs text-blue-700">
+                <Clock className="h-3 w-3" />
+                <span>{subscriptionInfo.daysRemaining}d</span>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-auto py-4 px-3 space-y-1">

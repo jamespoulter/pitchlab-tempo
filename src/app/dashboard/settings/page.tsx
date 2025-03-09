@@ -214,7 +214,11 @@ export default async function SettingsPage({
                   <div className="flex justify-between items-center mb-4">
                     <div>
                       <h3 className="font-semibold">
-                        {subscriptionInfo.isSubscribed ? "PitchHub Plus" : "Free Plan"}
+                        {subscriptionInfo.isSubscribed 
+                          ? subscriptionInfo.isTrialing 
+                            ? "Free Trial" 
+                            : "PitchHub Plus" 
+                          : "Free Plan"}
                       </h3>
                       <p className="text-sm text-muted-foreground">
                         {subscriptionInfo.isSubscribed ? "£45/month" : "Limited features"}
@@ -222,7 +226,11 @@ export default async function SettingsPage({
                     </div>
                     <Badge 
                       variant={subscriptionInfo.isSubscribed ? "premium" : "outline"}
-                      className={subscriptionInfo.isSubscribed ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white" : ""}
+                      className={subscriptionInfo.isSubscribed 
+                        ? subscriptionInfo.isTrialing 
+                          ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white" 
+                          : "bg-gradient-to-r from-blue-600 to-purple-600 text-white" 
+                        : ""}
                     >
                       {subscriptionInfo.isSubscribed ? "Active" : "Inactive"}
                     </Badge>
@@ -231,11 +239,16 @@ export default async function SettingsPage({
                   {subscriptionInfo.isSubscribed && (
                     <div className="space-y-2">
                       {subscriptionInfo.isTrialing && (
-                        <div className="flex items-center gap-2 mb-3 bg-blue-50 p-2 rounded-md">
-                          <Clock className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm text-blue-700">
-                            Trial period: {subscriptionInfo.daysRemaining} day{subscriptionInfo.daysRemaining !== 1 ? 's' : ''} remaining
-                          </span>
+                        <div className="flex items-center gap-2 mb-3 bg-blue-50 p-3 rounded-md border border-blue-100">
+                          <Clock className="h-5 w-5 text-blue-600" />
+                          <div>
+                            <p className="text-sm font-medium text-blue-700">
+                              Trial period: {subscriptionInfo.daysRemaining} day{subscriptionInfo.daysRemaining !== 1 ? 's' : ''} remaining
+                            </p>
+                            <p className="text-xs text-blue-600">
+                              Your card will be charged £45 after the trial period ends.
+                            </p>
+                          </div>
                         </div>
                       )}
                       
