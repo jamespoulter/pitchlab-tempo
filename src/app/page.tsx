@@ -24,17 +24,17 @@ import {
   ArrowRight
 } from "lucide-react";
 import { createClient } from "../../supabase/client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useLayoutEffect } from "react";
 
 // Animation variants
 const fadeIn = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.6 } }
+  visible: { opacity: 1, transition: { duration: 0.6, ease: "easeOut" } }
 };
 
 const slideUp = {
   hidden: { y: 30, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.6 } }
+  visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: "easeOut" } }
 };
 
 const staggerContainer = {
@@ -42,14 +42,16 @@ const staggerContainer = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
+      staggerChildren: 0.1,
+      ease: "easeOut",
+      delayChildren: 0.1
     }
   }
 };
 
 const itemFadeIn = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
 };
 
 export default function Home() {
@@ -67,6 +69,13 @@ export default function Home() {
   
   // Reference to check if component is mounted
   const isMounted = useRef(false);
+  
+  // Use layout effect to trigger animations as early as possible
+  useLayoutEffect(() => {
+    if (typeof window !== 'undefined') {
+      setAnimationsTriggered(true);
+    }
+  }, []);
   
   useEffect(() => {
     // Set mounted flag
@@ -89,9 +98,27 @@ export default function Home() {
     
     getUser();
     
+    // Force animation trigger on window load
+    const handleLoad = () => {
+      if (isMounted.current) {
+        setAnimationsTriggered(true);
+      }
+    };
+    
+    window.addEventListener('load', handleLoad);
+    
+    // Fallback: If animations haven't triggered after 500ms, force them
+    const fallbackTimer = setTimeout(() => {
+      if (isMounted.current) {
+        setAnimationsTriggered(true);
+      }
+    }, 500);
+    
     return () => {
       isMounted.current = false;
       clearTimeout(timer);
+      clearTimeout(fallbackTimer);
+      window.removeEventListener('load', handleLoad);
     };
   }, []);
 
@@ -248,8 +275,8 @@ export default function Home() {
                   <Link href="/sign-in">Login</Link>
                 </Button>
                 <Button asChild className="rounded-full font-medium">
-                  <Link href="#waitlist">
-                    Join Waitlist
+                  <Link href="/pricing">
+                    Start Free Trial
                   </Link>
                 </Button>
               </>
@@ -264,7 +291,7 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div
               initial="hidden"
-              animate={animationsTriggered ? "visible" : "hidden"}
+              animate="visible"
               variants={fadeIn}
               className="max-w-xl"
             >
@@ -273,7 +300,7 @@ export default function Home() {
               </Badge>
               <motion.h1 
                 initial="hidden"
-                animate={animationsTriggered ? "visible" : "hidden"}
+                animate="visible"
                 variants={slideUp}
                 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold tracking-tight mb-6"
               >
@@ -282,7 +309,7 @@ export default function Home() {
               </motion.h1>
               <motion.p 
                 initial="hidden"
-                animate={animationsTriggered ? "visible" : "hidden"}
+                animate="visible"
                 variants={slideUp}
                 className="text-xl text-gray-600 mb-8"
               >
@@ -290,13 +317,13 @@ export default function Home() {
               </motion.p>
               <motion.div 
                 initial="hidden"
-                animate={animationsTriggered ? "visible" : "hidden"}
+                animate="visible"
                 variants={fadeIn}
                 className="flex flex-col sm:flex-row gap-4"
               >
                 <Button size="lg" className="rounded-full px-8 font-medium" asChild>
-                  <Link href="#waitlist">
-                    Join the Waitlist
+                  <Link href="/pricing">
+                    Start 7-Day Free Trial
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
@@ -310,7 +337,7 @@ export default function Home() {
             
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={animationsTriggered ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.3 }}
               className="hidden md:block"
             >
@@ -1156,7 +1183,7 @@ export default function Home() {
             </Badge>
             <h2 className="text-3xl font-heading font-bold mb-4">Simple, Transparent Pricing</h2>
             <p className="text-lg text-gray-600">
-              Join our waitlist today to secure early bird pricing when we launch.
+              Start your 7-day free trial today and experience the full power of PitchHub.
             </p>
           </motion.div>
 
@@ -1212,13 +1239,13 @@ export default function Home() {
                 </motion.ul>
                 <div className="text-center">
                   <Button size="lg" className="w-full rounded-full font-medium" asChild>
-                    <Link href="#waitlist">
-                      Join the Waitlist
+                    <Link href="/pricing">
+                      Start Free Trial
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
-                  <p className="text-sm text-gray-500 mt-4">
-                    Limited-time offer for waitlist members only
+                  <p className="text-xs text-center w-full mt-3 text-gray-500">
+                    7-day free trial, no credit card required
                   </p>
                 </div>
               </div>
@@ -1227,8 +1254,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Waitlist Section */}
-      <section id="waitlist" className="py-20 bg-gray-50">
+      {/* Call to Action Section */}
+      <section id="cta" className="py-20 bg-gray-50">
         <div className="container mx-auto px-4">
           <motion.div 
             initial="hidden"
@@ -1238,11 +1265,11 @@ export default function Home() {
             className="max-w-3xl mx-auto text-center mb-12"
           >
             <Badge className="mb-4 bg-primary/10 text-primary hover:bg-primary/10 px-3 py-1 font-medium">
-              Waitlist
+              Get Started
             </Badge>
-            <h2 className="text-3xl font-heading font-bold mb-4">Join the PitchHub Waitlist</h2>
+            <h2 className="text-3xl font-heading font-bold mb-4">Ready to Transform Your Agency's New Business Process?</h2>
             <p className="text-lg text-gray-600">
-              Be the first to know when we launch and secure early bird pricing.
+              Start your 7-day free trial today and see the difference PitchHub can make.
             </p>
           </motion.div>
 
@@ -1253,78 +1280,32 @@ export default function Home() {
             viewport={{ once: true }}
             className="max-w-md mx-auto"
           >
-            <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-md border border-gray-100">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
-                  <Input 
-                    id="name" 
-                    value={formState.name}
-                    onChange={handleInputChange}
-                    placeholder="John Doe" 
-                    className="mt-1 rounded-lg" 
-                    disabled={formStatus === "submitting" || formStatus === "success"}
-                  />
+            <div className="bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center">
+              <div className="mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
+                  <Sparkles className="h-8 w-8" />
                 </div>
-                <div>
-                  <Label htmlFor="email" className="text-gray-700 font-medium">Work Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    value={formState.email}
-                    onChange={handleInputChange}
-                    placeholder="john@youragency.com" 
-                    className="mt-1 rounded-lg" 
-                    disabled={formStatus === "submitting" || formStatus === "success"}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="company" className="text-gray-700 font-medium">Agency Name</Label>
-                  <Input 
-                    id="company" 
-                    value={formState.company}
-                    onChange={handleInputChange}
-                    placeholder="Your Agency" 
-                    className="mt-1 rounded-lg" 
-                    disabled={formStatus === "submitting" || formStatus === "success"}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="role" className="text-gray-700 font-medium">Your Role</Label>
-                  <Input 
-                    id="role" 
-                    value={formState.role}
-                    onChange={handleInputChange}
-                    placeholder="e.g. New Business Director" 
-                    className="mt-1 rounded-lg" 
-                    disabled={formStatus === "submitting" || formStatus === "success"}
-                  />
-                </div>
-                
-                {errorMessage && (
-                  <div className="text-red-500 text-sm">{errorMessage}</div>
-                )}
-                
-                {formStatus === "success" ? (
-                  <div className="bg-green-50 text-green-700 p-3 rounded-md flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-                    <span>Thanks for joining! We'll be in touch soon.</span>
-                  </div>
-                ) : (
-                  <Button 
-                    type="submit" 
-                    className="w-full rounded-full font-medium"
-                    disabled={formStatus === "submitting"}
-                  >
-                    {formStatus === "submitting" ? "Submitting..." : "Join Waitlist"}
-                  </Button>
-                )}
-                
-                <p className="text-xs text-gray-500 text-center">
-                  We'll only use your email to send you PitchHub updates. No spam, ever.
+                <h3 className="text-2xl font-bold mb-2">PitchHub Plus</h3>
+                <p className="text-gray-600 mb-4">
+                  Full access to all features with our 7-day free trial
                 </p>
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <span className="text-4xl font-bold">£45</span>
+                  <span className="text-gray-500">/month per user</span>
+                </div>
               </div>
-            </form>
+              
+              <Button size="lg" className="w-full rounded-full font-medium" asChild>
+                <Link href="/pricing">
+                  Start Your Free Trial
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              
+              <p className="text-sm text-gray-500 mt-4">
+                No credit card required to start your trial
+              </p>
+            </div>
           </motion.div>
         </div>
       </section>

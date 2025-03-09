@@ -11,7 +11,7 @@ import {
     CardTitle
 } from "./ui/card";
 import { supabase } from "../../supabase/supabase";
-import { Check } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface PlanFeature {
@@ -115,18 +115,28 @@ export default function PricingCard({ item, user }: {
         return null;
     }
 
+    // Get the top 3 features to highlight
+    const topFeatures = features
+        .filter(feature => feature.included)
+        .slice(0, 3);
+
     return (
-        <Card className={`w-[350px] relative overflow-hidden ${item.popular ? 'border-2 border-blue-500 shadow-xl scale-105' : 'border border-gray-200'}`}>
-            {item.popular && (
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 opacity-30" />
-            )}
-            <CardHeader className="relative">
-                {item.popular && (
-                    <div className="px-4 py-1.5 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-full w-fit mb-4">
-                        Most Popular
-                    </div>
-                )}
-                <CardTitle className="text-2xl font-bold tracking-tight text-gray-900">{item.product?.name || "PitchHub Plus"}</CardTitle>
+        <Card className="w-full relative overflow-hidden border-2 border-blue-500 shadow-xl">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 opacity-30" />
+            
+            {/* Popular badge */}
+            <div className="absolute top-0 right-0 bg-blue-600 text-white px-4 py-1 rounded-bl-lg font-medium text-sm">
+                Most Popular
+            </div>
+            
+            <CardHeader className="relative pb-4">
+                <div className="flex items-center mb-2">
+                    <Sparkles className="h-5 w-5 text-blue-500 mr-2" />
+                    <p className="text-blue-600 font-medium text-sm">7-DAY FREE TRIAL</p>
+                </div>
+                <CardTitle className="text-2xl font-bold tracking-tight text-gray-900">
+                    {item.product?.name || "PitchHub Plus"}
+                </CardTitle>
                 <CardDescription className="flex items-baseline gap-2 mt-2">
                     <span className="text-4xl font-bold text-gray-900">{formatAmount(item.amount, item.currency)}</span>
                     <span className="text-gray-600">/{item.interval || "month"}</span>
@@ -136,43 +146,54 @@ export default function PricingCard({ item, user }: {
                 )}
             </CardHeader>
             
-            {features.length > 0 && (
-                <CardContent>
-                    <ul className="space-y-3">
-                        {features.map((feature, index) => (
+            <CardContent className="relative pb-4">
+                <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                    <h4 className="font-medium text-blue-800 mb-2">Top Features:</h4>
+                    <ul className="space-y-2">
+                        {topFeatures.map((feature, index) => (
                             <li key={index} className="flex items-start">
-                                <div className={`flex-shrink-0 h-5 w-5 ${feature.included ? 'text-blue-500' : 'text-gray-300'}`}>
+                                <div className="flex-shrink-0 h-5 w-5 text-blue-600">
                                     <Check size={18} />
                                 </div>
-                                <span className={`ml-3 text-sm ${feature.included ? 'text-gray-700' : 'text-gray-400'}`}>
+                                <span className="ml-3 font-medium text-blue-800">
                                     {feature.name}
                                 </span>
                             </li>
                         ))}
                     </ul>
-                </CardContent>
-            )}
+                </div>
+                
+                <div>
+                    <h4 className="font-medium text-gray-700 mb-2">All Features:</h4>
+                    <ul className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                        {features.filter(feature => feature.included).map((feature, index) => (
+                            <li key={index} className="flex items-start">
+                                <div className="flex-shrink-0 h-5 w-5 text-blue-500">
+                                    <Check size={18} />
+                                </div>
+                                <span className="ml-3 text-sm text-gray-700">
+                                    {feature.name}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            </CardContent>
             
-            <CardFooter className="relative">
+            <CardFooter className="relative pt-2">
                 <Button
                     onClick={async () => {
                         await handleCheckout(item.id)
                     }}
                     disabled={isLoading}
-                    className={`w-full py-6 text-lg font-medium`}
+                    className="w-full py-6 text-lg font-medium bg-blue-600 hover:bg-blue-700"
                 >
-                    {isLoading ? "Processing..." : "Get Started"}
+                    {isLoading ? "Processing..." : "Start Your Free Trial"}
                 </Button>
                 
-                {item.product?.metadata?.trial_period_days ? (
-                    <p className="text-xs text-center w-full mt-3 text-gray-500">
-                        Includes {item.product.metadata.trial_period_days}-day free trial
-                    </p>
-                ) : (
-                    <p className="text-xs text-center w-full mt-3 text-gray-500">
-                        Includes 7-day free trial
-                    </p>
-                )}
+                <p className="text-xs text-center w-full mt-3 text-gray-500">
+                    Try risk-free for 7 days. Cancel anytime.
+                </p>
             </CardFooter>
         </Card>
     )

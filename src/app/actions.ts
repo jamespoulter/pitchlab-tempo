@@ -81,6 +81,10 @@ export const signUpAction = async (formData: FormData) => {
         } catch (checkoutErr) {
           // Handle checkout error but still continue with signup success
         }
+      } else {
+        // If no plan was selected, redirect to pricing page
+        // This ensures users go through the subscription flow
+        return redirect('/pricing');
       }
     } catch (err) {
       // Error handling without console.error
@@ -99,13 +103,44 @@ export const signInAction = async (formData: FormData) => {
   const password = formData.get("password") as string;
   const supabase = await createClient();
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data: { user }, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
   if (error) {
     return encodedRedirect("error", "/sign-in", error.message);
+  }
+
+  if (user) {
+    // Check for active subscription
+    try {
+      // Check for active subscriptions
+      const { data: activeSubscriptions, error: activeError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'active');
+
+      // Check for trialing subscriptions
+      const { data: trialingSubscriptions, error: trialingError } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'trialing');
+
+      // If we have any active or trialing subscriptions, allow access to dashboard
+      if ((activeSubscriptions && activeSubscriptions.length > 0) || 
+          (trialingSubscriptions && trialingSubscriptions.length > 0)) {
+        return redirect("/dashboard");
+      }
+
+      // No active or trialing subscriptions found, redirect to pricing
+      return redirect('/pricing');
+    } catch (err) {
+      // Error handling without console.error
+      return redirect('/pricing');
+    }
   }
 
   return redirect("/dashboard");
@@ -187,44 +222,80 @@ export const signOutAction = async () => {
   return redirect("/sign-in");
 };
 
+export const signInWithGoogleAction = async () => {
+  const supabase = await createClient();
+  const origin = headers().get("origin");
+  
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${origin}/auth/callback`,
+      queryParams: {
+        access_type: 'offline',
+        prompt: 'consent',
+      },
+    },
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data.url;
+};
+
 export const checkUserSubscription = async (userId: string) => {
   const supabase = await createClient();
 
   try {
     console.log("Checking subscription for user:", userId);
     
-    // First try to find an active subscription
-    const { data: subscription, error } = await supabase
+    // Check for active subscriptions
+    const { data: activeSubscriptions, error: activeError } = await supabase
       .from('subscriptions')
       .select('*')
       .eq('user_id', userId)
-      .eq('status', 'active')
-      .single();
+      .eq('status', 'active');
 
-    if (error) {
-      console.log("No active subscription found, error:", error.message);
+    // Check for trialing subscriptions
+    const { data: trialingSubscriptions, error: trialingError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('status', 'trialing');
+
+    // If we have active subscriptions
+    if (activeSubscriptions && activeSubscriptions.length > 0) {
+      console.log("Found active subscription:", activeSubscriptions[0].id);
       
-      // If no active subscription, check for trialing subscriptions
-      const { data: trialingSubscription, error: trialingError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'trialing')
-        .single();
-        
-      if (trialingError || !trialingSubscription) {
-        console.log("No trialing subscription found either");
-        return {
-          isSubscribed: false,
-          subscription: null,
-          trialEnd: null,
-          daysRemaining: 0,
-          isTrialing: false
-        };
+      const subscription = activeSubscriptions[0];
+      
+      // Check if subscription is in trial period
+      const isTrialing = subscription.trial_end ? new Date(subscription.trial_end * 1000) > new Date() : false;
+      
+      // Calculate days remaining in trial
+      let daysRemaining = 0;
+      if (isTrialing && subscription.trial_end) {
+        const trialEnd = new Date(subscription.trial_end * 1000); // Convert from Unix timestamp
+        const today = new Date();
+        const diffTime = trialEnd.getTime() - today.getTime();
+        daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       }
+
+      return {
+        isSubscribed: true,
+        subscription,
+        trialEnd: subscription.trial_end,
+        daysRemaining,
+        isTrialing
+      };
+    }
+    
+    // If we have trialing subscriptions
+    if (trialingSubscriptions && trialingSubscriptions.length > 0) {
+      console.log("Found trialing subscription:", trialingSubscriptions[0].id);
       
-      // Use the trialing subscription
-      console.log("Found trialing subscription:", trialingSubscription.id);
+      const trialingSubscription = trialingSubscriptions[0];
       
       // Calculate days remaining in trial
       let daysRemaining = 0;
@@ -243,28 +314,15 @@ export const checkUserSubscription = async (userId: string) => {
         isTrialing: true
       };
     }
-
-    // If we found an active subscription
-    console.log("Found active subscription:", subscription.id);
     
-    // Check if subscription is in trial period
-    const isTrialing = subscription.trial_end ? new Date(subscription.trial_end * 1000) > new Date() : false;
-    
-    // Calculate days remaining in trial
-    let daysRemaining = 0;
-    if (isTrialing && subscription.trial_end) {
-      const trialEnd = new Date(subscription.trial_end * 1000); // Convert from Unix timestamp
-      const today = new Date();
-      const diffTime = trialEnd.getTime() - today.getTime();
-      daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    }
-
+    // No active or trialing subscriptions found
+    console.log("No active or trialing subscription found");
     return {
-      isSubscribed: true,
-      subscription,
-      trialEnd: subscription.trial_end,
-      daysRemaining,
-      isTrialing
+      isSubscribed: false,
+      subscription: null,
+      trialEnd: null,
+      daysRemaining: 0,
+      isTrialing: false
     };
   } catch (err) {
     console.error("Error checking subscription:", err);

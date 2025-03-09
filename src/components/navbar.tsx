@@ -3,6 +3,7 @@ import { createClient } from '../../supabase/server'
 import { Button } from './ui/button'
 import { User, UserCircle } from 'lucide-react'
 import UserProfile from './user-profile'
+import Image from 'next/image'
 
 export default async function Navbar() {
   const supabase = createClient()
@@ -13,8 +14,13 @@ export default async function Navbar() {
   return (
     <nav className="w-full border-b border-gray-200 bg-white py-2">
       <div className="container mx-auto px-4 flex justify-between items-center">
-        <Link href="/" prefetch className="text-xl font-bold">
-          Logo
+        <Link href="/" prefetch className="flex items-center">
+          <div className="flex items-center">
+            <div className="h-8 w-8 rounded-md bg-blue-600 flex items-center justify-center mr-2">
+              <span className="text-white font-bold">P</span>
+            </div>
+            <span className="text-xl font-bold">PitchHub</span>
+          </div>
         </Link>
         <div className="flex gap-4 items-center">
           {user ? (
