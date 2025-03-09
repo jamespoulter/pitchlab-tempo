@@ -57,38 +57,54 @@ export function AddServiceModal({
     e.preventDefault();
     setIsSubmitting(true);
     
+    // Validate required fields
+    if (!name || !description || !category || !priceRange || !timeline) {
+      toast.error("Please fill in all required fields");
+      setIsSubmitting(false);
+      return;
+    }
+    
     try {
       const newService = {
         name,
         description,
-        features,
+        features: Array.isArray(features) ? features : [],
         priceRange,
         timeline,
         category,
-        deliverables,
+        deliverables: Array.isArray(deliverables) ? deliverables : [],
         icon: getIconForCategory(category) || "🎨", // Use category-based icon or default
         process: [], // Empty arrays for optional fields
         faq: [],
         testimonials: [],
       };
       
+      console.log("Submitting service data:", JSON.stringify(newService, null, 2));
+      
       if (onSave) {
+        console.log("Calling onSave function");
         await onSave(newService);
-      }
-      
-      // Reset form
-      setName("");
-      setDescription("");
-      setFeatures([]);
-      setNewFeature("");
-      setPriceRange("");
-      setTimeline("");
-      setCategory("");
-      setDeliverables([]);
-      setNewDeliverable("");
-      
-      if (onOpenChange) {
-        onOpenChange(false);
+        console.log("onSave function completed");
+        
+        // Reset form
+        setName("");
+        setDescription("");
+        setFeatures([]);
+        setNewFeature("");
+        setPriceRange("");
+        setTimeline("");
+        setCategory("");
+        setDeliverables([]);
+        setNewDeliverable("");
+        
+        if (onOpenChange) {
+          onOpenChange(false);
+        }
+        
+        toast.success("Service added successfully");
+      } else {
+        console.error("onSave function is not defined");
+        toast.error("Could not save service: Internal error");
       }
     } catch (error) {
       console.error("Error submitting form:", error);

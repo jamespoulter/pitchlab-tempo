@@ -1,3 +1,6 @@
+"use client";
+
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,292 +22,543 @@ import {
   Briefcase,
   Share,
   Copy,
+  Trash,
+  Save,
+  User,
+  Upload,
+  Loader2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { getTestimonialById, updateTestimonial, deleteTestimonial, uploadTestimonialClientImage } from "@/utils/supabase-client";
+import { Testimonial, TestimonialFormData } from "@/types/agency";
+import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { format } from "date-fns";
 
 export default function TestimonialDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  // This would normally fetch real data from the database based on the ID
-  const testimonial = {
-    id: params.id,
-    clientName: "John Smith",
-    clientTitle: "CEO",
-    companyName: "Acme Inc.",
-    quote:
-      "Working with this agency transformed our brand identity and online presence. Their strategic approach and creative solutions exceeded our expectations and delivered measurable results. The team was responsive, professional, and truly understood our business goals. We saw a 45% increase in qualified leads within the first three months of implementing their recommendations. I would highly recommend them to any business looking to elevate their digital marketing strategy.",
-    rating: 5,
-    date: "2023-08-15",
-    projectType: "Website Redesign & Digital Marketing",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-    featured: true,
-    contactInfo: {
-      email: "john@acmeinc.com",
-      phone: "+1 (555) 123-4567",
-    },
-    projectDetails: {
-      startDate: "2023-01-10",
-      endDate: "2023-06-30",
-      services: [
-        "Website Redesign",
-        "SEO Optimization",
-        "Content Strategy",
-        "PPC Campaign",
-      ],
-      results: [
-        "45% increase in qualified leads",
-        "28% improvement in conversion rate",
-        "65% increase in organic traffic",
-      ],
-    },
-    relatedCaseStudies: [
-      "Acme Inc. Website Redesign",
-      "Acme Inc. Digital Marketing Campaign",
-    ],
+  const [testimonial, setTestimonial] = useState<Testimonial | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  
+  const [clientName, setClientName] = useState("");
+  const [clientRole, setClientRole] = useState("");
+  const [clientCompany, setClientCompany] = useState("");
+  const [content, setContent] = useState("");
+  const [rating, setRating] = useState<number | undefined>(5);
+  const [projectName, setProjectName] = useState("");
+  const [projectDate, setProjectDate] = useState("");
+  const [clientImageUrl, setClientImageUrl] = useState("");
+  const [isFeatured, setIsFeatured] = useState(false);
+  
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Check if we should start in edit mode
+  useEffect(() => {
+    const editParam = searchParams.get("edit");
+    if (editParam === "true") {
+      setIsEditing(true);
+    }
+  }, [searchParams]);
+  
+  // Fetch testimonial data
+  useEffect(() => {
+    const fetchTestimonial = async () => {
+      setIsLoading(true);
+      try {
+        const data = await getTestimonialById(params.id);
+        setTestimonial(data);
+        
+        // Set form values
+        if (data) {
+          setClientName(data.client_name);
+          setClientRole(data.client_role || "");
+          setClientCompany(data.client_company || "");
+          setContent(data.content);
+          setRating(data.rating);
+          setProjectName(data.project_name || "");
+          setProjectDate(data.project_date || "");
+          setClientImageUrl(data.client_image_url || "");
+          setIsFeatured(data.is_featured || false);
+        }
+      } catch (error) {
+        console.error("Error fetching testimonial:", error);
+        toast.error("Failed to load testimonial");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchTestimonial();
+  }, [params.id]);
+  
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+    
+    try {
+      const { success, url, error } = await uploadTestimonialClientImage(file);
+      
+      if (success && url) {
+        setClientImageUrl(url);
+        toast.success("Image uploaded successfully");
+      } else {
+        console.error("Error uploading image:", error);
+        toast.error("Failed to upload image");
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      toast.error("An error occurred while uploading the image");
+    } finally {
+      setIsUploading(false);
+    }
   };
-
-  // Generate stars based on rating
-  const stars = Array(5)
-    .fill(0)
-    .map((_, i) => (
-      <Star
-        key={i}
-        className={`h-5 w-5 ${i < testimonial.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
-      />
-    ));
-
+  
+  const handleSave = async () => {
+    if (!clientName || !content) {
+      toast.error("Client name and testimonial content are required");
+      return;
+    }
+    
+    setIsSaving(true);
+    
+    try {
+      const updatedData: Partial<TestimonialFormData> = {
+        client_name: clientName,
+        client_role: clientRole,
+        client_company: clientCompany,
+        content,
+        rating,
+        project_name: projectName,
+        project_date: projectDate,
+        client_image_url: clientImageUrl,
+        is_featured: isFeatured,
+      };
+      
+      const { success, data, error } = await updateTestimonial(params.id, updatedData);
+      
+      if (success && data) {
+        setTestimonial(data);
+        setIsEditing(false);
+        toast.success("Testimonial updated successfully");
+      } else {
+        console.error("Error updating testimonial:", error);
+        toast.error("Failed to update testimonial");
+      }
+    } catch (error) {
+      console.error("Error updating testimonial:", error);
+      toast.error("An error occurred while updating the testimonial");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+  
+  const handleDelete = async () => {
+    if (confirm("Are you sure you want to delete this testimonial? This action cannot be undone.")) {
+      setIsDeleting(true);
+      
+      try {
+        const { success, error } = await deleteTestimonial(params.id);
+        
+        if (success) {
+          toast.success("Testimonial deleted successfully");
+          router.push("/dashboard/testimonials");
+        } else {
+          console.error("Error deleting testimonial:", error);
+          toast.error("Failed to delete testimonial");
+        }
+      } catch (error) {
+        console.error("Error deleting testimonial:", error);
+        toast.error("An error occurred while deleting the testimonial");
+      } finally {
+        setIsDeleting(false);
+      }
+    }
+  };
+  
+  // Format date for display
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "MMM d, yyyy");
+    } catch (error) {
+      return dateString;
+    }
+  };
+  
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+  
+  if (!testimonial) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/dashboard/testimonials">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Testimonials
+            </Link>
+          </Button>
+        </div>
+        
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <MessageSquare className="h-12 w-12 text-gray-300 mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Testimonial Not Found</h2>
+            <p className="text-muted-foreground mb-4">
+              The testimonial you're looking for doesn't exist or has been deleted.
+            </p>
+            <Button asChild>
+              <Link href="/dashboard/testimonials">
+                Return to Testimonials
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+  
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Link href="/dashboard/testimonials">
-          <Button variant="ghost" size="sm" className="gap-1">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Testimonials</span>
-          </Button>
-        </Link>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1">
-            <Edit className="h-4 w-4" />
-            <span>Edit</span>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/dashboard/testimonials">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Testimonials
+            </Link>
           </Button>
-          <Button size="sm" className="gap-1">
-            <FileText className="h-4 w-4" />
-            <span>Add to Proposal</span>
-          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          {isEditing ? (
+            <>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsEditing(false)}
+                disabled={isSaving}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={handleSave}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Save Changes
+                  </>
+                )}
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setIsEditing(true)}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash className="h-4 w-4 mr-2" />
+                    Delete
+                  </>
+                )}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl">Client Testimonial</CardTitle>
-                  <CardDescription className="mt-2">
-                    <div className="flex items-center gap-2">
-                      <Building className="h-4 w-4" />
-                      <span>
-                        {testimonial.companyName} • {testimonial.projectType}
-                      </span>
-                    </div>
-                  </CardDescription>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {isEditing ? "Edit Testimonial" : "Testimonial Details"}
+          </CardTitle>
+          <CardDescription>
+            {isEditing 
+              ? "Update the client testimonial information" 
+              : "View detailed information about this client testimonial"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {isEditing ? (
+            // Edit Mode
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="clientName">Client Name <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="clientName"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    placeholder="John Smith"
+                    required
+                    disabled={isSaving}
+                  />
                 </div>
-                {testimonial.featured && (
-                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
+                <div className="space-y-2">
+                  <Label htmlFor="clientRole">Client Title/Role</Label>
+                  <Input
+                    id="clientRole"
+                    value={clientRole}
+                    onChange={(e) => setClientRole(e.target.value)}
+                    placeholder="CEO"
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="clientCompany">Company Name</Label>
+                <Input
+                  id="clientCompany"
+                  value={clientCompany}
+                  onChange={(e) => setClientCompany(e.target.value)}
+                  placeholder="Acme Inc."
+                  disabled={isSaving}
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="content">Testimonial Content <span className="text-red-500">*</span></Label>
+                <Textarea
+                  id="content"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="Working with this agency transformed our brand identity..."
+                  className="min-h-[150px]"
+                  required
+                  disabled={isSaving}
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="projectName">Project Name</Label>
+                  <Input
+                    id="projectName"
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    placeholder="Website Redesign"
+                    disabled={isSaving}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="projectDate">Project Date</Label>
+                  <Input
+                    id="projectDate"
+                    type="date"
+                    value={projectDate}
+                    onChange={(e) => setProjectDate(e.target.value)}
+                    disabled={isSaving}
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label>Rating</Label>
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      className="focus:outline-none"
+                      disabled={isSaving}
+                    >
+                      <Star
+                        className={`h-5 w-5 ${
+                          star <= (rating || 0)
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="clientImage">Client Image</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="clientImage"
+                    value={clientImageUrl}
+                    onChange={(e) => setClientImageUrl(e.target.value)}
+                    placeholder="https://example.com/avatar.jpg"
+                    disabled={isSaving || isUploading}
+                  />
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    accept="image/*"
+                    disabled={isSaving || isUploading}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isSaving || isUploading}
+                  >
+                    {isUploading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Upload className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                {clientImageUrl && (
+                  <div className="mt-2">
+                    <img
+                      src={clientImageUrl}
+                      alt="Client"
+                      className="h-16 w-16 rounded-full object-cover"
+                    />
+                  </div>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="isFeatured"
+                  checked={isFeatured}
+                  onChange={(e) => setIsFeatured(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  disabled={isSaving}
+                />
+                <Label htmlFor="isFeatured" className="text-sm">
+                  Feature this testimonial
+                </Label>
+              </div>
+            </div>
+          ) : (
+            // View Mode
+            <div className="space-y-6">
+              <div className="flex items-start gap-4">
+                {testimonial.client_image_url ? (
+                  <img
+                    src={testimonial.client_image_url}
+                    alt={testimonial.client_name}
+                    className="h-16 w-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-gray-200 flex items-center justify-center">
+                    <User className="h-8 w-8 text-gray-500" />
+                  </div>
+                )}
+                <div>
+                  <h2 className="text-xl font-semibold">{testimonial.client_name}</h2>
+                  <div className="text-muted-foreground">
+                    {testimonial.client_role && (
+                      <span>{testimonial.client_role}</span>
+                    )}
+                    {testimonial.client_role && testimonial.client_company && (
+                      <span> • </span>
+                    )}
+                    {testimonial.client_company && (
+                      <span>{testimonial.client_company}</span>
+                    )}
+                  </div>
+                  {testimonial.rating && (
+                    <div className="flex items-center mt-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`h-4 w-4 ${
+                            i < testimonial.rating!
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-gray-300"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {testimonial.is_featured && (
+                  <span className="ml-auto px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                     Featured
                   </span>
                 )}
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full overflow-hidden">
-                    <img
-                      src={testimonial.avatar}
-                      alt={testimonial.clientName}
-                      className="w-full h-full object-cover"
-                    />
+              
+              <div className="p-4 bg-gray-50 rounded-lg border">
+                <p className="italic text-gray-700">"{testimonial.content}"</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Project</p>
+                  <p>{testimonial.project_name || "Not specified"}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-muted-foreground">Date</p>
+                  <p>{testimonial.project_date ? formatDate(testimonial.project_date) : "Not specified"}</p>
+                </div>
+              </div>
+              
+              <div className="border-t pt-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Created</p>
+                    <p>{formatDate(testimonial.created_at)}</p>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">{testimonial.clientName}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {testimonial.clientTitle}, {testimonial.companyName}
-                    </p>
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-muted-foreground">Last Updated</p>
+                    <p>{formatDate(testimonial.updated_at)}</p>
                   </div>
                 </div>
-                <div className="flex items-center mb-4">
-                  {stars}
-                  <span className="ml-2 text-sm text-muted-foreground">
-                    {testimonial.rating}/5
-                  </span>
-                </div>
-                <p className="italic text-gray-700 text-lg mb-3">
-                  "{testimonial.quote}"
-                </p>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4 mr-1" />
-                  {new Date(testimonial.date).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </div>
               </div>
-
-              <div className="pt-4 border-t">
-                <h3 className="text-lg font-semibold mb-4">Project Results</h3>
-                <div className="space-y-3">
-                  {testimonial.projectDetails.results.map((result, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start gap-2 bg-green-50 border border-green-100 rounded-md p-3"
-                    >
-                      <Star className="h-5 w-5 text-green-500 mt-0.5" />
-                      <span>{result}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="pt-4 border-t">
-                <h3 className="text-lg font-semibold mb-4">
-                  Services Provided
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {testimonial.projectDetails.services.map((service, index) => (
-                    <span
-                      key={index}
-                      className="text-sm px-3 py-1 bg-blue-50 text-blue-700 rounded-full"
-                    >
-                      {service}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Related Case Studies</CardTitle>
-              <CardDescription>
-                Case studies related to this testimonial
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {testimonial.relatedCaseStudies.map((caseStudy, index) => (
-                  <div
-                    key={index}
-                    className="p-4 border rounded-md hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                      <span className="font-medium">{caseStudy}</span>
-                    </div>
-                    <Button variant="link" size="sm" className="mt-2 h-8 pl-0">
-                      View Case Study
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="md:col-span-1 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Client Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Company:</span>
-                  <span>{testimonial.companyName}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Project Type:</span>
-                  <span>{testimonial.projectType}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Email:</span>
-                  <span>{testimonial.contactInfo.email}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Phone:</span>
-                  <span>{testimonial.contactInfo.phone}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Project Timeline</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Start Date:</span>
-                  <span>
-                    {new Date(
-                      testimonial.projectDetails.startDate,
-                    ).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">End Date:</span>
-                  <span>
-                    {new Date(
-                      testimonial.projectDetails.endDate,
-                    ).toLocaleDateString()}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Testimonial Date:</span>
-                  <span>{new Date(testimonial.date).toLocaleDateString()}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full justify-start">
-                <FileText className="h-4 w-4 mr-2" />
-                <span>Add to Proposal</span>
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Share className="h-4 w-4 mr-2" />
-                <span>Share Testimonial</span>
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Copy className="h-4 w-4 mr-2" />
-                <span>Copy Quote</span>
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                <span>Request Follow-up</span>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

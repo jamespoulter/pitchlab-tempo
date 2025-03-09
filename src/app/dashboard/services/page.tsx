@@ -90,18 +90,24 @@ export default function ServicesPage() {
 
   const handleSaveService = async (serviceData: any) => {
     try {
+      console.log("Services page received service data:", JSON.stringify(serviceData, null, 2));
+      
       const { success, data, error } = await createService(serviceData);
+      
       if (success && data) {
         toast.success("Service added successfully");
         // Refresh the services list
         fetchServices();
+        return true;
       } else {
-        toast.error("Failed to add service");
         console.error("Error adding service:", error);
+        toast.error(error?.message || "Failed to add service");
+        return false;
       }
     } catch (error) {
-      toast.error("An error occurred");
-      console.error("Error adding service:", error);
+      console.error("Unexpected error adding service:", error);
+      toast.error("An unexpected error occurred");
+      return false;
     }
   };
 

@@ -1,5 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr";
-import { AgencyProfile, AgencyProfileFormData, AgencyBranding, AgencyAsset, AgencyAssetFormData, AgencyCredential, AgencyCredentialFormData, CaseStudy, CaseStudyFormData, TeamMember, TeamMemberFormData, Service, ServiceFormData } from "@/types/agency";
+import { AgencyProfile, AgencyProfileFormData, AgencyBranding, AgencyAsset, AgencyAssetFormData, AgencyCredential, AgencyCredentialFormData, CaseStudy, CaseStudyFormData, TeamMember, TeamMemberFormData, Service, ServiceFormData, Testimonial, TestimonialFormData } from "@/types/agency";
 
 // Create a Supabase client for browser-side operations
 export const createClient = () => {
@@ -1203,7 +1203,18 @@ export async function getServices(): Promise<Service[]> {
     return [];
   }
   
-  return data || [];
+  if (!data) return [];
+  
+  // Map database column names to frontend camelCase
+  return data.map(service => {
+    if (service.pricerange) {
+      return {
+        ...service,
+        priceRange: service.pricerange
+      };
+    }
+    return service;
+  }) as Service[];
 }
 
 /**
@@ -1233,7 +1244,17 @@ export async function getServiceById(serviceId: string): Promise<Service | null>
     return null;
   }
   
-  return data;
+  if (!data) return null;
+  
+  // Map database column names to frontend camelCase
+  if (data.pricerange) {
+    return {
+      ...data,
+      priceRange: data.pricerange
+    } as Service;
+  }
+  
+  return data as Service;
 }
 
 /**
@@ -1242,33 +1263,61 @@ export async function getServiceById(serviceId: string): Promise<Service | null>
 export async function createService(serviceData: ServiceFormData): Promise<{ success: boolean; data?: Service; error?: any }> {
   const supabase = createClient();
   
-  // Get the current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  console.log("Creating service with data:", JSON.stringify(serviceData, null, 2));
   
-  if (userError || !user) {
-    console.error("Error fetching user:", userError);
-    return { success: false, error: userError };
-  }
-  
-  // Prepare the data with the user_id
-  const data = {
-    ...serviceData,
-    user_id: user.id,
-  };
-  
-  // Create the service
-  const { data: newService, error } = await supabase
-    .from("services")
-    .insert(data)
-    .select()
-    .single();
-  
-  if (error) {
-    console.error("Error creating service:", error);
+  try {
+    // Get the current user
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (userError || !user) {
+      console.error("Error fetching user:", userError);
+      return { success: false, error: userError };
+    }
+    
+    console.log("User authenticated:", user.id);
+    
+    // Map frontend camelCase to database lowercase column names
+    const formattedData = {
+      name: serviceData.name,
+      description: serviceData.description,
+      features: Array.isArray(serviceData.features) ? serviceData.features : [],
+      pricerange: serviceData.priceRange, // Match the actual database column name
+      timeline: serviceData.timeline,
+      category: serviceData.category,
+      icon: serviceData.icon,
+      deliverables: Array.isArray(serviceData.deliverables) ? serviceData.deliverables : [],
+      process: Array.isArray(serviceData.process) ? serviceData.process : [],
+      faq: Array.isArray(serviceData.faq) ? serviceData.faq : [],
+      testimonials: Array.isArray(serviceData.testimonials) ? serviceData.testimonials : [],
+      user_id: user.id
+    };
+    
+    console.log("Prepared data for insert:", JSON.stringify(formattedData, null, 2));
+    
+    // Create the service
+    const { data: newService, error } = await supabase
+      .from("services")
+      .insert(formattedData)
+      .select()
+      .single();
+    
+    if (error) {
+      console.error("Error creating service:", error);
+      return { success: false, error };
+    }
+    
+    console.log("Service created successfully:", newService);
+    
+    // Map database column names back to frontend camelCase
+    if (newService && newService.pricerange) {
+      (newService as any).priceRange = newService.pricerange;
+    }
+    
+    return { success: true, data: newService as Service };
+  } catch (error) {
+    console.error("Unexpected error in createService:", error);
     return { success: false, error };
   }
-  
-  return { success: true, data: newService };
 }
 
 /**
@@ -1285,12 +1334,28 @@ export async function updateService(serviceId: string, serviceData: Partial<Serv
     return { success: false, error: userError };
   }
   
+  // Map frontend camelCase to database lowercase column names
+  const formattedData: Record<string, any> = {};
+  
+  // Map each property with the correct case
+  if (serviceData.name !== undefined) formattedData.name = serviceData.name;
+  if (serviceData.description !== undefined) formattedData.description = serviceData.description;
+  if (serviceData.features !== undefined) formattedData.features = serviceData.features;
+  if (serviceData.priceRange !== undefined) formattedData.pricerange = serviceData.priceRange;
+  if (serviceData.timeline !== undefined) formattedData.timeline = serviceData.timeline;
+  if (serviceData.category !== undefined) formattedData.category = serviceData.category;
+  if (serviceData.icon !== undefined) formattedData.icon = serviceData.icon;
+  if (serviceData.deliverables !== undefined) formattedData.deliverables = serviceData.deliverables;
+  if (serviceData.process !== undefined) formattedData.process = serviceData.process;
+  if (serviceData.faq !== undefined) formattedData.faq = serviceData.faq;
+  if (serviceData.testimonials !== undefined) formattedData.testimonials = serviceData.testimonials;
+  
   // Update the service
-  const { data, error } = await supabase
+  const { data: updatedService, error } = await supabase
     .from("services")
-    .update(serviceData)
+    .update(formattedData)
     .eq("id", serviceId)
-    .eq("user_id", user.id)
+    .eq("user_id", user.id) // Ensure the user can only update their own services
     .select()
     .single();
   
@@ -1299,7 +1364,12 @@ export async function updateService(serviceId: string, serviceData: Partial<Serv
     return { success: false, error };
   }
   
-  return { success: true, data };
+  // Map database column names back to frontend camelCase
+  if (updatedService && updatedService.pricerange) {
+    (updatedService as any).priceRange = updatedService.pricerange;
+  }
+  
+  return { success: true, data: updatedService as Service };
 }
 
 /**
@@ -1329,4 +1399,194 @@ export async function deleteService(serviceId: string): Promise<{ success: boole
   }
   
   return { success: true };
+}
+
+/**
+ * Fetches all testimonials for the current authenticated user
+ */
+export async function getTestimonials(): Promise<Testimonial[]> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return [];
+  }
+  
+  // Get all testimonials for the user
+  const { data, error } = await supabase
+    .from("testimonials")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("display_order", { ascending: true })
+    .order("created_at", { ascending: false });
+  
+  if (error) {
+    console.error("Error fetching testimonials:", error);
+    return [];
+  }
+  
+  return data || [];
+}
+
+/**
+ * Fetches a specific testimonial by ID for the current authenticated user
+ */
+export async function getTestimonialById(testimonialId: string): Promise<Testimonial | null> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return null;
+  }
+  
+  // Get the testimonial
+  const { data, error } = await supabase
+    .from("testimonials")
+    .select("*")
+    .eq("id", testimonialId)
+    .eq("user_id", user.id)
+    .single();
+  
+  if (error) {
+    console.error("Error fetching testimonial:", error);
+    return null;
+  }
+  
+  return data;
+}
+
+/**
+ * Creates a new testimonial for the current authenticated user
+ */
+export async function createTestimonial(testimonialData: TestimonialFormData): Promise<{ success: boolean; data?: Testimonial; error?: any }> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Prepare the data with the user_id
+  const data = {
+    ...testimonialData,
+    user_id: user.id,
+  };
+  
+  // Create the testimonial
+  const { data: newTestimonial, error } = await supabase
+    .from("testimonials")
+    .insert(data)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error creating testimonial:", error);
+    return { success: false, error };
+  }
+  
+  return { success: true, data: newTestimonial };
+}
+
+/**
+ * Updates a testimonial for the current authenticated user
+ */
+export async function updateTestimonial(testimonialId: string, testimonialData: Partial<TestimonialFormData>): Promise<{ success: boolean; data?: Testimonial; error?: any }> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Update the testimonial
+  const { data, error } = await supabase
+    .from("testimonials")
+    .update(testimonialData)
+    .eq("id", testimonialId)
+    .eq("user_id", user.id)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error updating testimonial:", error);
+    return { success: false, error };
+  }
+  
+  return { success: true, data };
+}
+
+/**
+ * Deletes a testimonial for the current authenticated user
+ */
+export async function deleteTestimonial(testimonialId: string): Promise<{ success: boolean; error?: any }> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Delete the testimonial
+  const { error } = await supabase
+    .from("testimonials")
+    .delete()
+    .eq("id", testimonialId)
+    .eq("user_id", user.id);
+  
+  if (error) {
+    console.error("Error deleting testimonial:", error);
+    return { success: false, error };
+  }
+  
+  return { success: true };
+}
+
+/**
+ * Uploads a client image for a testimonial
+ */
+export async function uploadTestimonialClientImage(file: File): Promise<{ success: boolean; url?: string; error?: any }> {
+  const supabase = createClient();
+  
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Upload the file to Supabase Storage
+  const { data, error } = await supabase.storage
+    .from("testimonial-images")
+    .upload(`${user.id}/${Date.now()}-${file.name}`, file, {
+      cacheControl: "3600",
+      upsert: true,
+    });
+  
+  if (error) {
+    console.error("Error uploading testimonial client image:", error);
+    return { success: false, error };
+  }
+  
+  // Get the public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from("testimonial-images")
+    .getPublicUrl(data.path);
+  
+  return { success: true, url: publicUrl };
 } 
