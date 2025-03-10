@@ -9,18 +9,24 @@ export async function GET(request: Request) {
   const error = requestUrl.searchParams.get("error");
   const error_description = requestUrl.searchParams.get("error_description");
 
+  // Get the origin - use the production URL if in production
+  const isProd = process.env.NODE_ENV === 'production';
+  const origin = isProd 
+    ? 'https://www.pitchhub.agency' 
+    : requestUrl.origin;
+
   // Handle OAuth errors
   if (error) {
     console.error(`OAuth error: ${error}`, error_description);
     return NextResponse.redirect(
-      new URL(`/sign-in?error=${encodeURIComponent(error_description || error)}`, requestUrl.origin)
+      new URL(`/sign-in?error=${encodeURIComponent(error_description || error)}`, origin)
     );
   }
 
   if (!code) {
     console.error("No code parameter in callback URL");
     return NextResponse.redirect(
-      new URL('/sign-in?error=Authentication+failed', requestUrl.origin)
+      new URL('/sign-in?error=Authentication+failed', origin)
     );
   }
 
@@ -31,14 +37,14 @@ export async function GET(request: Request) {
     if (error) {
       console.error("Error exchanging code for session:", error);
       return NextResponse.redirect(
-        new URL(`/sign-in?error=${encodeURIComponent(error.message)}`, requestUrl.origin)
+        new URL(`/sign-in?error=${encodeURIComponent(error.message)}`, origin)
       );
     }
     
     if (!data?.user) {
       console.error("No user data returned from session exchange");
       return NextResponse.redirect(
-        new URL('/sign-in?error=Authentication+failed', requestUrl.origin)
+        new URL('/sign-in?error=Authentication+failed', origin)
       );
     }
     
@@ -89,7 +95,7 @@ export async function GET(request: Request) {
         
         // If the user has an active subscription, redirect to dashboard instead
         if (hasSubscription) {
-          return NextResponse.redirect(new URL('/dashboard', requestUrl.origin));
+          return NextResponse.redirect(new URL('/dashboard', origin));
         }
       } catch (subscriptionError) {
         console.error('Error checking subscription:', subscriptionError);
@@ -99,11 +105,11 @@ export async function GET(request: Request) {
 
     // URL to redirect to after sign in process completes
     const redirectTo = redirect_to || "/dashboard";
-    return NextResponse.redirect(new URL(redirectTo, requestUrl.origin));
+    return NextResponse.redirect(new URL(redirectTo, origin));
   } catch (error) {
     console.error("Unexpected error in auth callback:", error);
     return NextResponse.redirect(
-      new URL('/sign-in?error=Authentication+failed', requestUrl.origin)
+      new URL('/sign-in?error=Authentication+failed', origin)
     );
   }
 } 

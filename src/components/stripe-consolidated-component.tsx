@@ -28,6 +28,14 @@ export default function StripeConsolidatedComponent({
 
   const supabase = createClient();
 
+  // Get the site URL based on environment
+  const getSiteUrl = () => {
+    const isProd = process.env.NODE_ENV === 'production';
+    return isProd 
+      ? 'https://www.pitchhub.agency' 
+      : window.location.origin;
+  };
+
   // Load Stripe.js manually with advanced fraud signals disabled (only if using TEMPO fix)
   useEffect(() => {
     // Only load Stripe once and only if using TEMPO fix
@@ -64,11 +72,14 @@ export default function StripeConsolidatedComponent({
     setDebugInfo({});
 
     try {
+      // Get the site URL based on environment
+      const siteUrl = getSiteUrl();
+      
       // Prepare checkout parameters
       const checkoutParams = {
         price_id: priceId,
         user_id: user.id,
-        return_url: `${window.location.origin}/dashboard`,
+        return_url: `${siteUrl}/dashboard`,
         trial_period_days: trialPeriodDays,
       };
 

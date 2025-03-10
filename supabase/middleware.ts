@@ -12,6 +12,10 @@ export const updateSession = async (request: NextRequest) => {
       },
     });
 
+    // Get the domain for cookies
+    const isProd = process.env.NODE_ENV === 'production';
+    const cookieDomain = isProd ? '.pitchhub.agency' : undefined;
+
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -25,13 +29,18 @@ export const updateSession = async (request: NextRequest) => {
           },
           setAll(cookiesToSet) {
             cookiesToSet.forEach(({ name, value, options }) => {
+              // Set domain for cookies in production
+              const cookieOptions = isProd 
+                ? { ...options, domain: cookieDomain } 
+                : options;
+                
               request.cookies.set(name, value);
               response = NextResponse.next({
                 request: {
                   headers: request.headers,
                 },
               });
-              response.cookies.set(name, value, options);
+              response.cookies.set(name, value, cookieOptions);
             });
           },
         },

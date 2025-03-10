@@ -50,11 +50,9 @@ export default function PricingCard({ item, user: propUser }: {
             { name: "Team Collaboration", included: true }
         ];
 
-    // Format currency amount
+    // Format the amount with currency
     const formatAmount = (amount: number | null | undefined, currency: string = 'GBP') => {
-        // Default to £45 if amount is null or undefined
         const safeAmount = amount ?? 4500;
-        
         return new Intl.NumberFormat('en-GB', {
             style: 'currency',
             currency: currency,
@@ -62,7 +60,14 @@ export default function PricingCard({ item, user: propUser }: {
         }).format(safeAmount / 100);
     };
 
-    // Handle checkout process
+    // Get the site URL based on environment
+    const getSiteUrl = () => {
+        const isProd = process.env.NODE_ENV === 'production';
+        return isProd 
+            ? 'https://www.pitchhub.agency' 
+            : window.location.origin;
+    };
+
     const handleCheckout = async (priceId: string) => {
         setIsLoading(true);
         setError(null);
@@ -91,7 +96,10 @@ export default function PricingCard({ item, user: propUser }: {
                 // User is not logged in, redirect to signup with plan info
                 localStorage.setItem('selectedPlanId', priceId);
                 localStorage.setItem('trialPeriodDays', trialPeriodDays.toString());
-                window.location.href = `/signup?plan=${priceId}&trial=${trialPeriodDays}&redirect_to=/pricing`;
+                
+                // Use the correct domain based on environment
+                const siteUrl = getSiteUrl();
+                window.location.href = `${siteUrl}/sign-up?plan=${priceId}&trial=${trialPeriodDays}&redirect_to=/pricing`;
                 return;
             }
             
@@ -106,11 +114,14 @@ export default function PricingCard({ item, user: propUser }: {
                 return;
             }
             
+            // Get the site URL based on environment
+            const siteUrl = getSiteUrl();
+            
             // Create a simple checkout payload with only the required fields
             const checkoutPayload = {
                 price_id: priceId,
                 user_id: user.id,
-                return_url: `${window.location.origin}/dashboard`,
+                return_url: `${siteUrl}/dashboard`,
                 trial_period_days: trialPeriodDays,
             };
             

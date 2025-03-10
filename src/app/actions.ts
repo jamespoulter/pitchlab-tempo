@@ -14,7 +14,12 @@ export const signUpAction = async (formData: FormData) => {
   const trialDays = formData.get("trial_days")?.toString();
   const redirectTo = formData.get("redirect_to")?.toString();
   const supabase = await createClient();
-  const origin = headers().get("origin");
+  
+  // Get the origin - use the production URL if in production
+  const isProd = process.env.NODE_ENV === 'production';
+  const origin = isProd 
+    ? 'https://www.pitchhub.agency' 
+    : headers().get("origin") || 'http://localhost:3000';
 
   if (!email || !password) {
     return encodedRedirect(
@@ -221,7 +226,12 @@ export const signOutAction = async () => {
 
 export const signInWithGoogleAction = async (redirectTo?: string) => {
   const supabase = await createClient();
-  const origin = headers().get("origin");
+  
+  // Get the origin - use the production URL if in production
+  const isProd = process.env.NODE_ENV === 'production';
+  const origin = isProd 
+    ? 'https://www.pitchhub.agency' 
+    : headers().get("origin") || 'http://localhost:3000';
   
   // Get the URL parameters from the current request
   const url = new URL(headers().get("referer") || origin || "");
