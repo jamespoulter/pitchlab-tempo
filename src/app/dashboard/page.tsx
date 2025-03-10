@@ -25,6 +25,7 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import StripeRedirectHandler from "@/components/stripe-redirect-handler";
 
 export default async function Dashboard() {
   const supabase = await createClient();
@@ -125,6 +126,9 @@ export default async function Dashboard() {
   return (
     <SubscriptionCheck>
       <div className="space-y-6">
+        {/* Stripe Redirect Handler */}
+        <StripeRedirectHandler />
+        
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row gap-6 md:items-center md:justify-between">
           <div>
