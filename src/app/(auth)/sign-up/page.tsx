@@ -27,7 +27,7 @@ export default async function Signup(props: {
       "get-plans",
       {
         body: {
-          product_id: "prod_RuEdYVyOF1Vitg" // PitchHub Plus product ID
+          product_id: "prod_RtvFwU7NJ0AK7g" // PitchHub Premium test product ID
         }
       }
     );

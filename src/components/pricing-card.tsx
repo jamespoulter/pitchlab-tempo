@@ -97,6 +97,7 @@ export default function PricingCard({
                 trial_period_days: trialPeriodDays
             });
             
+            // Check if user is logged in
             if (!user) {
                 // User is not logged in, redirect to signup with plan info
                 localStorage.setItem('selectedPlanId', priceId);
@@ -104,6 +105,18 @@ export default function PricingCard({
                 
                 // Use the correct domain based on environment
                 const siteUrl = getSiteUrl();
+                
+                // Check if we're already on the sign-up page with a plan parameter
+                const urlParams = new URLSearchParams(window.location.search);
+                const urlPlanId = urlParams.get('plan');
+                
+                // If we're already on the sign-up page with this plan, don't redirect again
+                if (window.location.pathname.includes('/sign-up') && urlPlanId === priceId) {
+                    setError("Please complete the sign-up form above to continue.");
+                    setIsLoading(false);
+                    return;
+                }
+                
                 window.location.href = `${siteUrl}/sign-up?plan=${priceId}&trial=${trialPeriodDays}&redirect_to=/pricing`;
                 return;
             }
