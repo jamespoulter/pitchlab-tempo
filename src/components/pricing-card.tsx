@@ -20,9 +20,14 @@ interface PlanFeature {
     included: boolean;
 }
 
-export default function PricingCard({ item, user: propUser }: {
+export default function PricingCard({ 
+    item, 
+    user: propUser, 
+    buttonOnly = false 
+}: {
     item: any,
-    user: User | null
+    user: User | null,
+    buttonOnly?: boolean
 }) {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -174,6 +179,19 @@ export default function PricingCard({ item, user: propUser }: {
         .filter(feature => feature.included)
         .slice(0, 3);
 
+    // If buttonOnly is true, just render the button
+    if (buttonOnly) {
+        return (
+            <button
+                onClick={() => handleCheckout(item.id)}
+                disabled={isLoading}
+                className="inline-flex items-center justify-center rounded-md bg-blue-600 hover:bg-blue-700 px-6 py-3 text-base font-medium text-white shadow transition-colors disabled:opacity-50"
+            >
+                {isLoading ? "Processing..." : "Start Your Free Trial"}
+            </button>
+        );
+    }
+
     return (
         <Card className="w-full relative overflow-hidden border-2 border-blue-500 shadow-xl">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 opacity-30" />
@@ -189,7 +207,7 @@ export default function PricingCard({ item, user: propUser }: {
                     <p className="text-blue-600 font-medium text-sm">7-DAY FREE TRIAL</p>
                 </div>
                 <CardTitle className="text-2xl font-bold tracking-tight text-gray-900">
-                    {item.product?.name || "PitchHub Plus"}
+                    {item.product?.name || "PitchHub Premium"}
                 </CardTitle>
                 <CardDescription className="flex items-baseline gap-2 mt-2">
                     <span className="text-4xl font-bold text-gray-900">{formatAmount(item.amount, item.currency)}</span>
@@ -249,11 +267,7 @@ export default function PricingCard({ item, user: propUser }: {
                 >
                     {isLoading ? "Processing..." : "Start Your Free Trial"}
                 </Button>
-                
-                <p className="text-xs text-center w-full mt-3 text-gray-500">
-                    Try risk-free for 7 days. Cancel anytime.
-                </p>
             </CardFooter>
         </Card>
-    )
+    );
 }

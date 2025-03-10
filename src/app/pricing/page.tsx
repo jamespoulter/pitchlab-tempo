@@ -96,6 +96,10 @@ const painPoints = [
     }
 ];
 
+// Test mode configuration
+const TEST_PRICE_ID = 'price_1R07PCI7Diy7LoDfEfcS7u3L';
+const TEST_PRODUCT_ID = 'prod_RtvFwU7NJ0AK7g';
+
 export default async function Pricing() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
@@ -114,7 +118,7 @@ export default async function Pricing() {
     // Use the new function name and get plans for the specific product
     const { data: allPlans, error } = await supabase.functions.invoke('get-plans', {
         body: {
-            product_id: "prod_RuEdYVyOF1Vitg" // PitchHub Plus product ID
+            product_id: TEST_PRODUCT_ID // Use the test product ID constant
         }
     });
     
@@ -151,14 +155,14 @@ export default async function Pricing() {
         
         // Create a fallback plan
         const fallbackPlan: Plan = {
-            id: "price_1R0QA2I7Diy7LoDft8J57jK3",
-            name: "PitchHub Plus",
-            amount: 4500,
+            id: TEST_PRICE_ID,
+            name: "PitchHub Premium",
+            amount: 25000,
             interval: "month",
             popular: true,
             product: {
-                id: "prod_RuEdYVyOF1Vitg",
-                name: "PitchHub Plus",
+                id: TEST_PRODUCT_ID,
+                name: "PitchHub Premium",
                 metadata: {
                     features: JSON.stringify([
                         { name: "Unlimited Pitches", included: true },
@@ -166,7 +170,7 @@ export default async function Pricing() {
                         { name: "Custom Branding", included: true },
                         { name: "Team Collaboration", included: true }
                     ]),
-                    description: "Full access to all PitchHub Plus features",
+                    description: "Full access to all PitchHub Premium features",
                     trial_period_days: "7",
                     popular: "true"
                 }
@@ -175,10 +179,10 @@ export default async function Pricing() {
         
         plans = [fallbackPlan];
     } else {
-        // Filter to only show the PitchHub Plus product
+        // Filter to only show the PitchHub Premium product
         plans = allPlans.filter((plan: Plan) => 
-            plan.product?.id === "prod_RuEdYVyOF1Vitg" || 
-            plan.product?.name === "PitchHub Plus"
+            plan.product?.id === TEST_PRODUCT_ID || 
+            plan.product?.name === "PitchHub Premium"
         );
         
         console.log("Filtered plans:", plans);
@@ -248,80 +252,84 @@ export default async function Pricing() {
                 </div>
                 
                 {/* Feature List */}
-                <div className="mt-16 max-w-3xl mx-auto">
-                    <h2 className="text-2xl font-bold text-center mb-8">Everything You Need to Win More Clients</h2>
-                    <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {commonFeatures.map((feature, index) => {
-                                // Determine if this is a key feature
-                                const isKeyFeature = keyFeatures.some(kf => 
-                                    feature.toLowerCase().includes(kf.title.toLowerCase()) ||
-                                    (feature.toLowerCase().includes("ai") && kf.title.includes("AI"))
-                                );
-                                
-                                return (
-                                    <div key={index} className={`flex items-start ${isKeyFeature ? 'col-span-full bg-blue-50 p-3 rounded-lg' : ''}`}>
-                                        <Check className={`mt-1 flex-shrink-0 ${isKeyFeature ? 'text-blue-600' : 'text-green-500'}`} size={20} />
-                                        <span className={`ml-3 ${isKeyFeature ? 'font-medium text-blue-800' : ''}`}>
-                                            {feature}
-                                            {isKeyFeature && <span className="ml-2 text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Core Feature</span>}
-                                        </span>
+                <div className="max-w-4xl mx-auto mb-16">
+                    <h2 className="text-2xl font-bold mb-8 text-center">All Features</h2>
+                    
+                    {plans && plans.length > 0 && commonFeatures.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-4">
+                            {commonFeatures.map((feature, index) => (
+                                <div key={index} className="flex items-center p-4 bg-white rounded-lg border border-gray-100">
+                                    <div className="flex-shrink-0 mr-4">
+                                        {planIncludesFeature(plans[0], feature) ? (
+                                            <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center">
+                                                <Check className="h-4 w-4 text-green-600" />
+                                            </div>
+                                        ) : (
+                                            <div className="h-6 w-6 rounded-full bg-red-100 flex items-center justify-center">
+                                                <X className="h-4 w-4 text-red-600" />
+                                            </div>
+                                        )}
                                     </div>
-                                );
-                            })}
+                                    <span className="text-gray-700">{feature}</span>
+                                </div>
+                            ))}
                         </div>
-                    </div>
-                </div>
-                
-                {/* Testimonials Section */}
-                <div className="mt-24 max-w-6xl mx-auto">
-                    <h2 className="text-2xl font-bold text-center mb-8">What Our Customers Say</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                            <p className="italic text-gray-700 mb-4">"I used to spend hours searching for the right case studies and creating proposals. With PitchHub, everything is organized and accessible. The AI proposal generator has saved us countless hours."</p>
-                            <p className="font-semibold">— Sarah Johnson, Creative Director</p>
+                    ) : (
+                        <div className="text-center text-gray-500">
+                            <p>Features will be displayed here once available.</p>
                         </div>
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                            <p className="italic text-gray-700 mb-4">"Being able to manage multiple agency brands in one place has streamlined our workflow. We never have to go hunting for case studies or testimonials again. It's all right there when we need it."</p>
-                            <p className="font-semibold">— Michael Chen, Agency Owner</p>
-                        </div>
-                    </div>
+                    )}
                 </div>
                 
                 {/* FAQ Section */}
-                <div className="mt-24 max-w-3xl mx-auto">
-                    <h2 className="text-2xl font-bold text-center mb-8">Frequently Asked Questions</h2>
+                <div className="max-w-3xl mx-auto mb-16">
+                    <h2 className="text-2xl font-bold mb-8 text-center">Frequently Asked Questions</h2>
+                    
                     <div className="space-y-6">
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                            <h3 className="text-lg font-medium mb-2">How does the 7-day free trial work?</h3>
-                            <p className="text-gray-600">When you sign up, you'll get immediate access to all features for 7 days. After your trial ends, you'll be automatically enrolled in the monthly plan.</p>
+                        <div className="bg-white rounded-lg border border-gray-100 p-6">
+                            <h3 className="text-lg font-semibold mb-2">How does the free trial work?</h3>
+                            <p className="text-gray-600">
+                                Your 7-day free trial gives you full access to all PitchHub Premium features. You won't be charged until the trial period ends, and you can cancel anytime before then.
+                            </p>
                         </div>
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                            <h3 className="text-lg font-medium mb-2">Can I cancel my subscription?</h3>
-                            <p className="text-gray-600">Yes, you can cancel your subscription at any time from your account dashboard. Your plan will remain active until the end of your current billing period.</p>
+                        
+                        <div className="bg-white rounded-lg border border-gray-100 p-6">
+                            <h3 className="text-lg font-semibold mb-2">Can I cancel my subscription?</h3>
+                            <p className="text-gray-600">
+                                Yes, you can cancel your subscription at any time from your account dashboard. If you cancel, you'll still have access until the end of your current billing period.
+                            </p>
                         </div>
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                            <h3 className="text-lg font-medium mb-2">Do you offer refunds?</h3>
-                            <p className="text-gray-600">We offer a 14-day money-back guarantee. If you're not satisfied with our service, contact our support team within 14 days of your purchase.</p>
-                        </div>
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
-                            <h3 className="text-lg font-medium mb-2">Is there a limit to how many proposals I can create?</h3>
-                            <p className="text-gray-600">No, our monthly plan includes unlimited proposals, case studies, and agency brands.</p>
+                        
+                        <div className="bg-white rounded-lg border border-gray-100 p-6">
+                            <h3 className="text-lg font-semibold mb-2">Is there a limit to how many proposals I can create?</h3>
+                            <p className="text-gray-600">
+                                No, with PitchHub Premium you can create unlimited proposals, case studies, and agency brands.
+                            </p>
                         </div>
                     </div>
                 </div>
                 
                 {/* CTA Section */}
-                <div className="mt-24 text-center">
-                    <h2 className="text-2xl font-bold mb-4">Ready to stop searching and start winning?</h2>
-                    <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-                        Start your 7-day free trial today and get all your agency assets in one place.
+                <div className="text-center mb-16">
+                    <h2 className="text-2xl font-bold mb-4">Ready to transform your agency's proposals?</h2>
+                    <p className="text-gray-600 max-w-2xl mx-auto mb-8">
+                        Join thousands of agencies who are saving time and winning more business with PitchHub.
                     </p>
-                    <a href="#pricing" className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors">
-                        Get Started Now
-                    </a>
+                    
+                    {plans && plans.length > 0 && (
+                        <Button item={plans[0]} user={user} />
+                    )}
                 </div>
             </div>
         </>
+    );
+}
+
+// Simple button component that reuses the PricingCard logic
+function Button({ item, user }: { item: Plan, user: any }) {
+    return (
+        <div className="inline-block">
+            <PricingCard item={item} user={user} buttonOnly={true} />
+        </div>
     );
 }
