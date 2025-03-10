@@ -12,11 +12,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Check } from "lucide-react";
 
 export default async function Signup(props: {
-  searchParams: Promise<Message & { plan?: string; trial?: string }>;
+  searchParams: Promise<Message & { plan?: string; trial?: string; redirect_to?: string }>;
 }) {
   const searchParams = await props.searchParams;
   const planId = searchParams.plan;
   const trialDays = searchParams.trial || "7";
+  const redirectTo = searchParams.redirect_to;
   
   // Fetch plan details if a plan ID is provided
   let planDetails = null;
@@ -141,6 +142,7 @@ export default async function Signup(props: {
             {/* Hidden fields to pass plan information */}
             {planId && <input type="hidden" name="plan_id" value={planId} />}
             {trialDays && <input type="hidden" name="trial_days" value={trialDays} />}
+            {redirectTo && <input type="hidden" name="redirect_to" value={redirectTo} />}
 
             <SubmitButton
               formAction={signUpAction}
@@ -159,7 +161,7 @@ export default async function Signup(props: {
               </div>
             </div>
 
-            <GoogleButton text="Sign up with Google" />
+            <GoogleButton text="Sign up with Google" redirectTo={redirectTo} />
 
             <FormMessage message={searchParams} />
           </form>

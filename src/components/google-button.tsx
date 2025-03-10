@@ -2,22 +2,33 @@
 
 import { Button } from "@/components/ui/button";
 import { signInWithGoogleAction } from "@/app/actions";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 interface GoogleButtonProps {
   className?: string;
   text?: string;
+  redirectTo?: string;
 }
 
-export function GoogleButton({ className = "", text = "Sign in with Google" }: GoogleButtonProps) {
+export function GoogleButton({ 
+  className = "", 
+  text = "Sign in with Google",
+  redirectTo
+}: GoogleButtonProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
-      const response = await signInWithGoogleAction();
+      
+      // Get redirect_to from props or URL search params
+      const urlRedirectTo = searchParams.get("redirect_to");
+      const finalRedirectTo = redirectTo || urlRedirectTo || undefined;
+      
+      const response = await signInWithGoogleAction(finalRedirectTo);
       
       // If the response is a URL, redirect to it
       if (response && typeof response === 'string' && response.startsWith('http')) {

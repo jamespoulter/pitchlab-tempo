@@ -99,8 +99,9 @@ export default function PricingCard({ item, user }: {
                 localStorage.setItem('selectedPlanId', priceId);
                 localStorage.setItem('trialPeriodDays', trialPeriodDays.toString());
                 
-                // Redirect to signup page with plan info in URL
-                window.location.href = `/signup?plan=${priceId}&trial=${trialPeriodDays}`;
+                // Redirect to signup page with plan info in URL and redirect_to parameter
+                // This ensures the user is redirected back to the pricing page after authentication
+                window.location.href = `/signup?plan=${priceId}&trial=${trialPeriodDays}&redirect_to=/pricing`;
             }
         } catch (error) {
             console.error('Error creating checkout session:', error);

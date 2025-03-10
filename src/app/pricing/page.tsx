@@ -4,6 +4,8 @@ import { createClient } from "../../../supabase/server";
 import { Check, X, Building2, FolderKanban, BrainCircuit, Search, Clock, FileCheck } from "lucide-react";
 import { ReactNode } from "react";
 import DashboardMockup from "@/components/dashboard-mockup";
+import { redirect } from "next/navigation";
+import { hasActiveSubscription } from "@/utils/subscription";
 
 interface PlanFeature {
     name: string;
@@ -97,6 +99,17 @@ const painPoints = [
 export default async function Pricing() {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
+
+    // If user is logged in, check for active subscriptions
+    if (user) {
+        // Check if the user has an active subscription
+        const hasSubscription = await hasActiveSubscription(supabase, user.id);
+        
+        // If the user has an active subscription, redirect to dashboard
+        if (hasSubscription) {
+            return redirect('/dashboard');
+        }
+    }
 
     // Use the new function name and get plans for the specific product
     const { data: allPlans, error } = await supabase.functions.invoke('get-plans', {

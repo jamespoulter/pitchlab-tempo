@@ -4,6 +4,7 @@ import { createClient } from "../../supabase/server";
 import { encodedRedirect } from "@/utils/utils";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { hasActiveSubscription } from "@/utils/subscription";
 
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
@@ -11,6 +12,7 @@ export const signUpAction = async (formData: FormData) => {
   const fullName = formData.get("full_name")?.toString() || '';
   const planId = formData.get("plan_id")?.toString();
   const trialDays = formData.get("trial_days")?.toString();
+  const redirectTo = formData.get("redirect_to")?.toString();
   const supabase = await createClient();
   const origin = headers().get("origin");
 
@@ -26,7 +28,7 @@ export const signUpAction = async (formData: FormData) => {
     email,
     password,
     options: {
-      emailRedirectTo: `${origin}/auth/callback`,
+      emailRedirectTo: `${origin}/auth/callback${redirectTo ? `?redirect_to=${redirectTo}` : ''}`,
       data: {
         full_name: fullName,
         email: email,
@@ -53,6 +55,14 @@ export const signUpAction = async (formData: FormData) => {
 
       if (updateError) {
         // Error handling without console.error
+      }
+      
+      // Check if the user already has an active subscription
+      const hasSubscription = await hasActiveSubscription(supabase, user.id);
+      
+      // If the user has an active subscription, redirect to dashboard
+      if (hasSubscription) {
+        return redirect('/dashboard');
       }
       
       // If a plan was selected, proceed to checkout
@@ -115,23 +125,10 @@ export const signInAction = async (formData: FormData) => {
   if (user) {
     // Check for active subscription
     try {
-      // Check for active subscriptions
-      const { data: activeSubscriptions, error: activeError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'active');
-
-      // Check for trialing subscriptions
-      const { data: trialingSubscriptions, error: trialingError } = await supabase
-        .from('subscriptions')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('status', 'trialing');
-
-      // If we have any active or trialing subscriptions, allow access to dashboard
-      if ((activeSubscriptions && activeSubscriptions.length > 0) || 
-          (trialingSubscriptions && trialingSubscriptions.length > 0)) {
+      const hasSubscription = await hasActiveSubscription(supabase, user.id);
+      
+      // If the user has an active subscription, redirect to dashboard
+      if (hasSubscription) {
         return redirect("/dashboard");
       }
 
@@ -222,14 +219,26 @@ export const signOutAction = async () => {
   return redirect("/sign-in");
 };
 
-export const signInWithGoogleAction = async () => {
+export const signInWithGoogleAction = async (redirectTo?: string) => {
   const supabase = await createClient();
   const origin = headers().get("origin");
+  
+  // Get the URL parameters from the current request
+  const url = new URL(headers().get("referer") || origin || "");
+  const urlRedirectTo = url.searchParams.get("redirect_to");
+  
+  // Use the provided redirectTo, or the one from URL parameters, or default to dashboard
+  const finalRedirectTo = redirectTo || urlRedirectTo || "/dashboard";
+  
+  // If the redirect is to the pricing page, add a query parameter to indicate we should check for subscriptions
+  const redirectToWithParams = finalRedirectTo === '/pricing' 
+    ? `${finalRedirectTo}?check_subscription=true` 
+    : finalRedirectTo;
   
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${origin}/auth/callback`,
+      redirectTo: `${origin}/auth/callback?redirect_to=${redirectToWithParams}`,
       queryParams: {
         access_type: 'offline',
         prompt: 'consent',
