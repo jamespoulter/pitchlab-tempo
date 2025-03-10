@@ -14,6 +14,8 @@ import {
   Settings,
   ChevronDown,
   ChevronRight,
+  CreditCard,
+  Zap,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 
@@ -219,6 +221,26 @@ export default function DashboardSidebar() {
           title="Testimonials"
           href="/dashboard/testimonials"
           isActive={pathname.startsWith("/dashboard/testimonials")}
+        />
+
+        <div className="pt-4 pb-2">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-3 mb-2">
+            TESTING
+          </p>
+        </div>
+        
+        <SidebarItem
+          icon={<CreditCard size={18} />}
+          title="Stripe Test"
+          href="/stripe-test"
+          isActive={pathname === "/stripe-test"}
+        />
+        
+        <SidebarItem
+          icon={<Zap size={18} />}
+          title="Stripe TEMPO Fix"
+          href="/stripe-test-tempo"
+          isActive={pathname === "/stripe-test-tempo"}
         />
       </div>
 

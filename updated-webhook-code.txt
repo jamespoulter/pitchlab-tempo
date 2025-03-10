@@ -1,0 +1,25 @@
+// Key changes for the payments-webhook function
+
+// 1. In handleSubscriptionCreated function, change:
+let userId = subscription.metadata?.user_id;
+// to:
+let userId = subscription.metadata?.user_id;
+
+// Add logging:
+console.log('Subscription metadata:', JSON.stringify(subscription.metadata, null, 2));
+console.log('Metadata keys:', Object.keys(subscription.metadata || {}));
+console.log('Extracted userId from metadata:', userId);
+
+// 2. In handleCheckoutSessionCompleted function, change:
+user_id: session.metadata?.user_id,
+// to:
+user_id: session.metadata?.user_id,
+
+// Add logging:
+console.log('Session metadata keys:', Object.keys(session.metadata || {}));
+console.log('Session metadata values:', Object.values(session.metadata || {}));
+console.log('Session metadata user_id:', session.metadata?.user_id);
+console.log('Stripe subscription metadata:', JSON.stringify(stripeSubscription.metadata, null, 2));
+
+// These changes ensure that the webhook consistently uses user_id instead of userId,
+// and adds detailed logging to help debug any issues with the metadata. 
