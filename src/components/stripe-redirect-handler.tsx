@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
-import { createClientComponentClient } from '@supabase/ssr';
+import { createClient } from '@/utils/supabase-browser';
 
 export default function StripeRedirectHandler() {
   const searchParams = useSearchParams();
@@ -12,7 +12,7 @@ export default function StripeRedirectHandler() {
   const [showAlert, setShowAlert] = useState(false);
   const [alertType, setAlertType] = useState<'success' | 'error' | 'loading' | null>(null);
   const [message, setMessage] = useState('');
-  const supabase = createClientComponentClient();
+  const supabase = createClient();
 
   useEffect(() => {
     // Check for Stripe redirect parameters

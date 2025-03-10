@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/ssr';
+import { createClient } from '@/utils/supabase-browser';
 import { toast } from 'react-hot-toast';
 
 interface Plan {
@@ -45,7 +45,7 @@ export default function PricingButton({ item, user }: { item: Plan, user: any })
         
         try {
             // User is logged in, create checkout session
-            const supabase = createClientComponentClient();
+            const supabase = createClient();
             
             const { data, error } = await supabase.functions.invoke('create-checkout', {
                 body: {
