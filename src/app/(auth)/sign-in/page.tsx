@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 
 interface LoginProps {
-  searchParams: Promise<Message>;
+  searchParams: Promise<Message & { redirect_to?: string }>;
 }
 
 export default async function SignInPage({ searchParams }: LoginProps) {
   const message = await searchParams;
+  const redirectTo = message.redirect_to || '/dashboard';
 
   if ("message" in message) {
     return (
@@ -34,7 +35,7 @@ export default async function SignInPage({ searchParams }: LoginProps) {
                 Don't have an account?{" "}
                 <Link
                   className="text-primary font-medium hover:underline transition-all"
-                  href="/sign-up"
+                  href={`/sign-up${redirectTo !== '/dashboard' ? `?redirect_to=${encodeURIComponent(redirectTo)}` : ''}`}
                 >
                   Sign up
                 </Link>
@@ -79,6 +80,11 @@ export default async function SignInPage({ searchParams }: LoginProps) {
               </div>
             </div>
 
+            {/* Hidden field for redirect_to */}
+            {redirectTo !== '/dashboard' && (
+              <input type="hidden" name="redirect_to" value={redirectTo} />
+            )}
+
             <SubmitButton
               className="w-full"
               pendingText="Signing in..."
@@ -96,7 +102,7 @@ export default async function SignInPage({ searchParams }: LoginProps) {
               </div>
             </div>
 
-            <GoogleButton />
+            <GoogleButton redirectTo={redirectTo} />
 
             <FormMessage message={message} />
           </form>

@@ -211,6 +211,13 @@ serve(async (req) => {
       mode: isTestMode ? 'TEST' : 'LIVE'
     });
 
+    // Extract metadata from request body if provided
+    const metadata = {
+      user_id: verifiedUserId,
+      test_mode: isTestMode ? 'true' : 'false',
+      ...(requestBody.metadata || {})
+    };
+
     // Create Stripe checkout session with enhanced options
     const sessionOptions: any = {
       payment_method_types: ['card'],
@@ -223,10 +230,8 @@ serve(async (req) => {
       mode: 'subscription',
       success_url: `${return_url}?session_id={CHECKOUT_SESSION_ID}&success=true`,
       cancel_url: `${return_url}?canceled=true`,
-      metadata: {
-        user_id: verifiedUserId,
-        test_mode: isTestMode ? 'true' : 'false'
-      },
+      metadata,
+      client_reference_id: verifiedUserId,
       // Enable automatic tax calculation now that it's configured in Stripe
       automatic_tax: { enabled: true },
       // Allow promotion codes to be applied at checkout

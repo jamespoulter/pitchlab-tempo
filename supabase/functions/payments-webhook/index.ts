@@ -104,7 +104,7 @@ async function handleSubscriptionCreated(supabaseClient: SupabaseClient, event: 
   console.log('Is test mode event:', !event.livemode);
 
   // Try to get user information
-  let userId = subscription.metadata?.user_id;
+  let userId = subscription.metadata?.user_id || subscription.metadata?.supabase_user_id;
   console.log('Extracted userId from metadata:', userId);
   
   if (!userId) {
@@ -353,19 +353,49 @@ async function handleSubscriptionDeleted(supabaseClient: SupabaseClient, event: 
 async function handleCheckoutSessionCompleted(supabaseClient: SupabaseClient, event: any) {
   const session = event.data.object;
   console.log('Handling checkout session completed:', session.id);
-  console.log('Full session data:', JSON.stringify(session, null, 2));
+  console.log('Session metadata:', JSON.stringify(session.metadata, null, 2));
   
-  // Log all metadata fields to help debug
-  console.log('Session metadata keys:', Object.keys(session.metadata || {}));
-  console.log('Session metadata values:', Object.values(session.metadata || {}));
-  console.log('Session metadata user_id:', session.metadata?.user_id);
+  // Try to get user information from multiple sources in order of reliability
+  let userId = session.metadata?.user_id || 
+               session.metadata?.supabase_user_id || 
+               session.client_reference_id; // Added client_reference_id as a source
+               
+  console.log('Extracted userId from metadata/client_reference_id:', userId);
+  
+  if (!userId && session.customer_details?.email) {
+    try {
+      console.log('No user_id found, attempting to find user by email:', session.customer_details.email);
+      
+      // Look up the user by email
+      const { data: users, error } = await supabaseClient
+        .from('users')
+        .select('id')
+        .eq('email', session.customer_details.email)
+        .limit(1);
+        
+      if (error) {
+        console.error('Error finding user by email:', error);
+      } else if (users && users.length > 0) {
+        userId = users[0].id;
+        console.log('Found user by email:', userId);
+      } else {
+        console.log('No user found with email:', session.customer_details.email);
+      }
+    } catch (error) {
+      console.error('Error finding user by email:', error);
+    }
+  }
+  
+  if (!userId) {
+    console.error('Could not determine user_id for checkout session:', session.id);
+    return;
+  }
   
   const subscriptionId = typeof session.subscription === 'string' 
     ? session.subscription 
     : session.subscription?.id;
   
   console.log('Extracted subscriptionId:', subscriptionId);
-  console.log('Session metadata:', JSON.stringify(session.metadata, null, 2));
   
   if (!subscriptionId) {
     console.log('No subscription ID found in checkout session');
@@ -380,46 +410,65 @@ async function handleCheckoutSessionCompleted(supabaseClient: SupabaseClient, ev
 
   try {
     console.log('Attempting to update subscription in Stripe with ID:', subscriptionId);
-    console.log('Metadata to be added:', {
-      ...session.metadata,
-      checkoutSessionId: session.id
-    });
     
     // Fetch the current subscription from Stripe to get the latest status
     const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
     console.log('Retrieved Stripe subscription status:', stripeSubscription.status);
-    console.log('Stripe subscription metadata:', JSON.stringify(stripeSubscription.metadata, null, 2));
     
+    // Update the Stripe subscription with enhanced metadata
     const updatedStripeSubscription = await stripe.subscriptions.update(
       subscriptionId,
       { 
         metadata: {
           ...session.metadata,
-          checkoutSessionId: session.id
+          checkoutSessionId: session.id,
+          user_id: userId, // Ensure user_id is in the Stripe metadata
+          completed_at: new Date().toISOString() // Add completion timestamp
         }
       }
     );
     
     console.log('Successfully updated Stripe subscription:', updatedStripeSubscription.id);
-    console.log('Updated Stripe metadata:', JSON.stringify(updatedStripeSubscription.metadata, null, 2));
 
-    console.log('Attempting to update subscription in Supabase with stripe_id:', subscriptionId);
-    console.log('User ID being set:', session.metadata?.user_id);
-    
-    const supabaseUpdateResult = await supabaseClient
+    // Update or create the subscription record in Supabase
+    const { data: existingSubscription } = await supabaseClient
       .from("subscriptions")
-      .update({
-        metadata: {
-          ...session.metadata,
-          checkoutSessionId: session.id
-        },
-        user_id: session.metadata?.user_id,
-        status: stripeSubscription.status, // Update the status from Stripe
-        current_period_start: stripeSubscription.current_period_start,
-        current_period_end: stripeSubscription.current_period_end,
-        cancel_at_period_end: stripeSubscription.cancel_at_period_end
-      })
-      .eq("stripe_id", subscriptionId);
+      .select("id")
+      .eq("stripe_id", subscriptionId)
+      .single();
+      
+    const subscriptionData = {
+      stripe_id: subscriptionId,
+      user_id: userId,
+      status: stripeSubscription.status,
+      price_id: stripeSubscription.items.data[0]?.price.id,
+      customer_id: stripeSubscription.customer,
+      current_period_start: stripeSubscription.current_period_start,
+      current_period_end: stripeSubscription.current_period_end,
+      cancel_at_period_end: stripeSubscription.cancel_at_period_end,
+      metadata: {
+        ...session.metadata,
+        checkoutSessionId: session.id,
+        completed_at: new Date().toISOString()
+      }
+    };
+    
+    let supabaseUpdateResult;
+    
+    if (existingSubscription) {
+      // Update existing subscription
+      console.log('Updating existing subscription in Supabase:', existingSubscription.id);
+      supabaseUpdateResult = await supabaseClient
+        .from("subscriptions")
+        .update(subscriptionData)
+        .eq("stripe_id", subscriptionId);
+    } else {
+      // Create new subscription record
+      console.log('Creating new subscription record in Supabase');
+      supabaseUpdateResult = await supabaseClient
+        .from("subscriptions")
+        .insert(subscriptionData);
+    }
     
     console.log('Supabase update result:', JSON.stringify(supabaseUpdateResult, null, 2));
     
@@ -431,7 +480,8 @@ async function handleCheckoutSessionCompleted(supabaseClient: SupabaseClient, ev
     return new Response(
       JSON.stringify({ 
         message: "Checkout session completed successfully",
-        subscriptionId 
+        subscriptionId,
+        userId
       }),
       { 
         status: 200,
@@ -440,7 +490,6 @@ async function handleCheckoutSessionCompleted(supabaseClient: SupabaseClient, ev
     );
   } catch (error: any) {
     console.error('Error processing checkout completion:', error);
-    console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     console.error('Error stack:', error.stack);
     return new Response(
       JSON.stringify({ error: "Failed to process checkout completion", details: error.message }),

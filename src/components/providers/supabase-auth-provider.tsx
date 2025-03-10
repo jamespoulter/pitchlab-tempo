@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase-browser';
 import { Session, User } from '@supabase/supabase-js';
+import ErrorBoundary from '../error-boundary';
 
 // Create a context for the auth state
 type AuthContextType = {
@@ -32,7 +33,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const supabase = createClient();
+  const [supabase, setSupabase] = useState(() => createClient());
 
   // Get session and user on mount
   useEffect(() => {
@@ -133,7 +134,7 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
   // Function to sign out
   const signOut = async () => {
@@ -211,5 +212,9 @@ export function SupabaseAuthProvider({ children }: { children: React.ReactNode }
     refreshSession,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <ErrorBoundary>
+      <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    </ErrorBoundary>
+  );
 } 

@@ -5,9 +5,21 @@ import type { NextRequest } from 'next/server'
 export async function middleware(req: NextRequest) {
   const res = NextResponse.next()
   const pathname = req.nextUrl.pathname
+  const searchParams = req.nextUrl.searchParams
 
   // Skip subscription check for non-dashboard routes
   if (!pathname.startsWith('/dashboard')) {
+    return res
+  }
+
+  // Allow Stripe redirect with session_id to pass through
+  // This is important for handling post-payment redirects
+  const sessionId = searchParams.get('session_id')
+  const success = searchParams.get('success')
+  
+  // If this is a Stripe redirect with a session_id, allow it through
+  // The StripeRedirectHandler component will verify the subscription
+  if (sessionId && success === 'true') {
     return res
   }
 
@@ -42,7 +54,10 @@ export async function middleware(req: NextRequest) {
 
   // If no session, redirect to sign-in
   if (!session) {
-    return NextResponse.redirect(new URL('/sign-in', req.url))
+    // Store the original URL to redirect back after sign-in
+    const redirectUrl = new URL('/sign-in', req.url)
+    redirectUrl.searchParams.set('redirect_to', pathname)
+    return NextResponse.redirect(redirectUrl)
   }
 
   // Check for active subscription
@@ -68,7 +83,10 @@ export async function middleware(req: NextRequest) {
     }
 
     // No active or trialing subscriptions found, redirect to pricing
-    return NextResponse.redirect(new URL('/pricing', req.url))
+    // Include the original URL to redirect back after subscription
+    const redirectUrl = new URL('/pricing', req.url)
+    redirectUrl.searchParams.set('redirect_to', pathname)
+    return NextResponse.redirect(redirectUrl)
   } catch (err) {
     // Error handling without console.error
     return NextResponse.redirect(new URL('/pricing', req.url))

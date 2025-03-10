@@ -12,7 +12,7 @@ export const signUpAction = async (formData: FormData) => {
   const fullName = formData.get("full_name")?.toString() || '';
   const planId = formData.get("plan_id")?.toString();
   const trialDays = formData.get("trial_days")?.toString();
-  const redirectTo = formData.get("redirect_to")?.toString();
+  const redirectTo = formData.get("redirect_to")?.toString() || '/dashboard';
   const supabase = await createClient();
   
   // Get the origin - use the production URL if in production
@@ -65,9 +65,9 @@ export const signUpAction = async (formData: FormData) => {
       // Check if the user already has an active subscription
       const hasSubscription = await hasActiveSubscription(supabase, user.id);
       
-      // If the user has an active subscription, redirect to dashboard
+      // If the user has an active subscription, redirect to dashboard or specified redirect URL
       if (hasSubscription) {
-        return redirect('/dashboard');
+        return redirect(redirectTo);
       }
       
       // If a plan was selected, proceed to checkout
@@ -79,7 +79,7 @@ export const signUpAction = async (formData: FormData) => {
             body: {
               price_id: planId,
               user_id: user.id,
-              return_url: `${origin}/dashboard`,
+              return_url: `${origin}${redirectTo}`,
               trial_period_days: trialPeriodDays,
             },
             headers: {
@@ -89,26 +89,33 @@ export const signUpAction = async (formData: FormData) => {
           
           if (checkoutError) {
             // Handle checkout error but still continue with signup success
+            // Redirect to pricing page with redirect_to parameter
+            return redirect(`/pricing?redirect_to=${encodeURIComponent(redirectTo)}`);
           } else if (checkoutData?.url) {
             // Redirect to Stripe checkout
             return redirect(checkoutData.url);
           }
         } catch (checkoutErr) {
           // Handle checkout error but still continue with signup success
+          // Redirect to pricing page with redirect_to parameter
+          return redirect(`/pricing?redirect_to=${encodeURIComponent(redirectTo)}`);
         }
       } else {
-        // If no plan was selected, redirect to pricing page
-        // This ensures users go through the subscription flow
-        return redirect('/pricing');
+        // If no plan was selected, redirect to pricing page with redirect_to parameter
+        return redirect(`/pricing?redirect_to=${encodeURIComponent(redirectTo)}`);
       }
     } catch (err) {
       // Error handling without console.error
+      // Redirect to pricing page with redirect_to parameter
+      return redirect(`/pricing?redirect_to=${encodeURIComponent(redirectTo)}`);
     }
   }
 
+  // If we get here, the user was created but email verification is required
+  // We'll still redirect them to the pricing page after showing the success message
   return encodedRedirect(
     "success",
-    "/sign-up",
+    "/pricing",
     "Thanks for signing up! Please check your email for a verification link.",
   );
 };
@@ -116,6 +123,7 @@ export const signUpAction = async (formData: FormData) => {
 export const signInAction = async (formData: FormData) => {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
+  const redirectTo = formData.get("redirect_to")?.toString() || '/dashboard';
   const supabase = await createClient();
 
   const { data: { user }, error } = await supabase.auth.signInWithPassword({
@@ -132,20 +140,22 @@ export const signInAction = async (formData: FormData) => {
     try {
       const hasSubscription = await hasActiveSubscription(supabase, user.id);
       
-      // If the user has an active subscription, redirect to dashboard
+      // If the user has an active subscription, redirect to dashboard or specified redirect URL
       if (hasSubscription) {
-        return redirect("/dashboard");
+        return redirect(redirectTo);
       }
 
-      // No active or trialing subscriptions found, redirect to pricing
-      return redirect('/pricing');
+      // No active or trialing subscriptions found, redirect to pricing with redirect_to parameter
+      return redirect(`/pricing?redirect_to=${encodeURIComponent(redirectTo)}`);
     } catch (err) {
       // Error handling without console.error
-      return redirect('/pricing');
+      return redirect(`/pricing?redirect_to=${encodeURIComponent(redirectTo)}`);
     }
   }
 
-  return redirect("/dashboard");
+  // This should not be reached if user is authenticated
+  // But if it is, redirect to pricing as a fallback with redirect_to parameter
+  return redirect(`/pricing?redirect_to=${encodeURIComponent(redirectTo)}`);
 };
 
 export const forgotPasswordAction = async (formData: FormData) => {
@@ -238,21 +248,13 @@ export const signInWithGoogleAction = async (redirectTo?: string) => {
   const urlRedirectTo = url.searchParams.get("redirect_to");
   
   // Use the provided redirectTo, or the one from URL parameters, or default to dashboard
-  const finalRedirectTo = redirectTo || urlRedirectTo || "/dashboard";
-  
-  // If the redirect is to the pricing page, add a query parameter to indicate we should check for subscriptions
-  const redirectToWithParams = finalRedirectTo === '/pricing' 
-    ? `${finalRedirectTo}?check_subscription=true` 
-    : finalRedirectTo;
+  const finalRedirectTo = redirectTo || urlRedirectTo || '/dashboard';
   
   try {
-    // Properly encode the redirect URL to prevent issues with special characters
-    const encodedRedirectTo = encodeURIComponent(`${origin}/auth/callback?redirect_to=${encodeURIComponent(redirectToWithParams)}`);
-    
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${origin}/auth/callback?redirect_to=${redirectToWithParams}`,
+        redirectTo: `${origin}/auth/callback?redirect_to=${encodeURIComponent(finalRedirectTo)}`,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -260,20 +262,12 @@ export const signInWithGoogleAction = async (redirectTo?: string) => {
       },
     });
 
-    if (error) {
-      console.error("OAuth sign-in error:", error.message);
-      throw new Error(error.message);
-    }
-
-    if (!data?.url) {
-      console.error("No OAuth URL returned");
-      throw new Error("Failed to generate authentication URL");
-    }
-
+    if (error) throw error;
+    
     return data.url;
-  } catch (error: any) {
-    console.error("Error in signInWithGoogleAction:", error);
-    throw new Error(error?.message || "Authentication failed");
+  } catch (error) {
+    console.error('Error signing in with Google:', error);
+    throw error;
   }
 };
 

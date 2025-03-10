@@ -6,6 +6,8 @@ import { ReactNode } from "react";
 import DashboardMockup from "@/components/dashboard-mockup";
 import { redirect } from "next/navigation";
 import { hasActiveSubscription } from "@/utils/subscription";
+import SubscriptionRedirect from "@/components/subscription-redirect";
+import PricingButton from "@/components/pricing-button";
 
 interface PlanFeature {
     name: string;
@@ -203,6 +205,7 @@ export default async function Pricing() {
     return (
         <>
             <Navbar />
+            <SubscriptionRedirect />
             <div className="container mx-auto px-4 py-16">
                 <div className="text-center mb-12">
                     <h1 className="text-4xl font-bold mb-4">Never Go Looking for a Case Study Again</h1>
@@ -246,90 +249,53 @@ export default async function Pricing() {
 
                 {/* Pricing Card - Single Plan Focus */}
                 <div className="max-w-md mx-auto mb-24">
-                    {plans && plans.length > 0 && (
-                        <PricingCard item={plans[0]} user={user} />
-                    )}
-                </div>
-                
-                {/* Feature List */}
-                <div className="max-w-4xl mx-auto mb-16">
-                    <h2 className="text-2xl font-bold mb-8 text-center">All Features</h2>
-                    
-                    {plans && plans.length > 0 && commonFeatures.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-4">
-                            {commonFeatures.map((feature, index) => (
-                                <div key={index} className="flex items-center p-4 bg-white rounded-lg border border-gray-100">
-                                    <div className="flex-shrink-0 mr-4">
-                                        {planIncludesFeature(plans[0], feature) ? (
-                                            <div className="h-6 w-6 rounded-full bg-green-100 flex items-center justify-center">
-                                                <Check className="h-4 w-4 text-green-600" />
-                                            </div>
-                                        ) : (
-                                            <div className="h-6 w-6 rounded-full bg-red-100 flex items-center justify-center">
-                                                <X className="h-4 w-4 text-red-600" />
-                                            </div>
-                                        )}
-                                    </div>
-                                    <span className="text-gray-700">{feature}</span>
+                    {plans.map((plan) => (
+                        <div key={plan.id} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                            <div className="p-6">
+                                <h3 className="text-2xl font-bold mb-2">{plan.product?.name || "PitchHub Premium"}</h3>
+                                <div className="flex items-baseline mb-4">
+                                    <span className="text-4xl font-extrabold">
+                                        {new Intl.NumberFormat('en-GB', {
+                                            style: 'currency',
+                                            currency: 'GBP',
+                                            minimumFractionDigits: 0,
+                                        }).format(plan.amount / 100)}
+                                    </span>
+                                    <span className="text-gray-500 ml-1">/{plan.interval}</span>
                                 </div>
-                            ))}
+                                <p className="text-gray-600 mb-6">
+                                    {plan.product?.metadata?.description || "Full access to all PitchHub Premium features"}
+                                </p>
+                                
+                                <div className="mb-6">
+                                    <PricingButton item={plan} user={user} />
+                                </div>
+                                
+                                <div className="border-t border-gray-100 pt-4">
+                                    <p className="text-sm text-gray-500 mb-4">Includes:</p>
+                                    <ul className="space-y-3">
+                                        {plan.product?.metadata?.features ? 
+                                            JSON.parse(plan.product.metadata.features)
+                                                .filter((feature: PlanFeature) => feature.included)
+                                                .map((feature: PlanFeature, index: number) => (
+                                                    <li key={index} className="flex items-start">
+                                                        <Check className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                                                        <span>{feature.name}</span>
+                                                    </li>
+                                                ))
+                                            : 
+                                            <li className="flex items-start">
+                                                <Check className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                                                <span>All Premium Features</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="text-center text-gray-500">
-                            <p>Features will be displayed here once available.</p>
-                        </div>
-                    )}
-                </div>
-                
-                {/* FAQ Section */}
-                <div className="max-w-3xl mx-auto mb-16">
-                    <h2 className="text-2xl font-bold mb-8 text-center">Frequently Asked Questions</h2>
-                    
-                    <div className="space-y-6">
-                        <div className="bg-white rounded-lg border border-gray-100 p-6">
-                            <h3 className="text-lg font-semibold mb-2">How does the free trial work?</h3>
-                            <p className="text-gray-600">
-                                Your 7-day free trial gives you full access to all PitchHub Premium features. You won't be charged until the trial period ends, and you can cancel anytime before then.
-                            </p>
-                        </div>
-                        
-                        <div className="bg-white rounded-lg border border-gray-100 p-6">
-                            <h3 className="text-lg font-semibold mb-2">Can I cancel my subscription?</h3>
-                            <p className="text-gray-600">
-                                Yes, you can cancel your subscription at any time from your account dashboard. If you cancel, you'll still have access until the end of your current billing period.
-                            </p>
-                        </div>
-                        
-                        <div className="bg-white rounded-lg border border-gray-100 p-6">
-                            <h3 className="text-lg font-semibold mb-2">Is there a limit to how many proposals I can create?</h3>
-                            <p className="text-gray-600">
-                                No, with PitchHub Premium you can create unlimited proposals, case studies, and agency brands.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-                
-                {/* CTA Section */}
-                <div className="text-center mb-16">
-                    <h2 className="text-2xl font-bold mb-4">Ready to transform your agency's proposals?</h2>
-                    <p className="text-gray-600 max-w-2xl mx-auto mb-8">
-                        Join thousands of agencies who are saving time and winning more business with PitchHub.
-                    </p>
-                    
-                    {plans && plans.length > 0 && (
-                        <Button item={plans[0]} user={user} />
-                    )}
+                    ))}
                 </div>
             </div>
         </>
-    );
-}
-
-// Simple button component that reuses the PricingCard logic
-function Button({ item, user }: { item: Plan, user: any }) {
-    return (
-        <div className="inline-block">
-            <PricingCard item={item} user={user} buttonOnly={true} />
-        </div>
     );
 }

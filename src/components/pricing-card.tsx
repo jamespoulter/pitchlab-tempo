@@ -148,12 +148,16 @@ export default function PricingCard({
             const siteUrl = getSiteUrl();
             console.log("Site URL for return URL:", siteUrl);
             
-            // Create a simple checkout payload with only the required fields
+            // Create checkout payload with user ID in metadata
             const checkoutPayload = {
                 price_id: priceId,
                 user_id: user.id,
                 return_url: `${siteUrl}/dashboard`,
                 trial_period_days: trialPeriodDays,
+                metadata: {
+                    supabase_user_id: user.id,
+                    user_email: user.email
+                }
             };
             
             console.log("Sending checkout payload:", checkoutPayload);
