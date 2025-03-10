@@ -10,8 +10,12 @@ if (!stripeKey) {
   console.error("STRIPE_SECRET_KEY environment variable is not set!");
 }
 
-// Fallback price ID to use if the provided price ID is invalid
-const FALLBACK_PRICE_ID = 'price_1R07PCI7Diy7LoDfEfcS7u3L';
+// Test mode configuration
+const TEST_PRICE_ID = 'price_1R07PCI7Diy7LoDfEfcS7u3L';
+const TEST_PRODUCT_ID = 'prod_RtvFwU7NJ0AK7g';
+const isTestMode = stripeKey.startsWith('sk_test_');
+
+console.log("Running in", isTestMode ? "TEST MODE" : "LIVE MODE");
 
 // Initialize Stripe with detailed error logging
 let stripe: Stripe;
@@ -155,11 +159,46 @@ serve(async (req) => {
       console.log('No Authorization header found, using provided user_id');
     }
     
-    // Validate the price ID - don't use 'price_default'
+    // Validate and handle the price ID
     let validatedPriceId = price_id;
-    if (price_id === 'price_default') {
-      console.log('Received price_default, using fallback price ID:', FALLBACK_PRICE_ID);
-      validatedPriceId = FALLBACK_PRICE_ID;
+    
+    // If we're in test mode, ensure we're using a test price
+    if (isTestMode) {
+      // If the price is 'price_default' or doesn't start with 'price_', use the test price
+      if (price_id === 'price_default' || !price_id.startsWith('price_')) {
+        console.log('Using test price ID:', TEST_PRICE_ID);
+        validatedPriceId = TEST_PRICE_ID;
+      } else {
+        // Verify the price exists and is a test price
+        try {
+          const price = await stripe.prices.retrieve(price_id);
+          if (!price.livemode) {
+            console.log('Valid test price ID:', price_id);
+            validatedPriceId = price_id;
+          } else {
+            console.warn('Live price ID provided in test mode, using test price instead');
+            validatedPriceId = TEST_PRICE_ID;
+          }
+        } catch (priceError) {
+          console.warn('Invalid price ID, using test price instead:', TEST_PRICE_ID);
+          validatedPriceId = TEST_PRICE_ID;
+        }
+      }
+    } else {
+      // Live mode - validate the price ID
+      if (price_id === 'price_default') {
+        console.error('Invalid price_default in live mode');
+        return new Response(
+          JSON.stringify({ 
+            error: "Invalid price ID in live mode",
+            success: false
+          }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
     }
     
     console.log('Creating checkout session with parameters:', {
@@ -169,6 +208,7 @@ serve(async (req) => {
       trial_period_days,
       coupon_id,
       customer_email: req.headers.get('X-Customer-Email'),
+      mode: isTestMode ? 'TEST' : 'LIVE'
     });
 
     // Create Stripe checkout session with enhanced options
@@ -185,6 +225,7 @@ serve(async (req) => {
       cancel_url: `${return_url}?canceled=true`,
       metadata: {
         user_id: verifiedUserId,
+        test_mode: isTestMode ? 'true' : 'false'
       },
       // Enable automatic tax calculation if configured in Stripe
       automatic_tax: { enabled: true },
@@ -208,6 +249,7 @@ serve(async (req) => {
         trial_period_days: Number(trial_period_days),
         metadata: {
           user_id: verifiedUserId,
+          test_mode: isTestMode ? 'true' : 'false'
         },
       };
     }
@@ -225,26 +267,7 @@ serve(async (req) => {
     console.log('Creating Stripe checkout session with options:', JSON.stringify(sessionOptions, null, 2));
     
     try {
-      // Verify the price exists before creating the session
-      let priceVerified = false;
-      try {
-        console.log('Verifying price ID:', validatedPriceId);
-        const price = await stripe.prices.retrieve(validatedPriceId);
-        console.log('Price verified:', price.id);
-        console.log('Price details:', JSON.stringify({
-          active: price.active,
-          currency: price.currency,
-          product: price.product,
-          unit_amount: price.unit_amount,
-          type: price.type
-        }, null, 2));
-        priceVerified = true;
-      } catch (priceError) {
-        console.error('Error verifying price:', priceError);
-        console.log('Using fallback price ID:', FALLBACK_PRICE_ID);
-        sessionOptions.line_items[0].price = FALLBACK_PRICE_ID;
-      }
-      
+      // Create the checkout session
       console.log('Creating checkout session with Stripe API...');
       const session = await stripe.checkout.sessions.create(sessionOptions);
       console.log('Checkout session created successfully:', session.id);
@@ -257,7 +280,7 @@ serve(async (req) => {
           url: session.url,
           success: true,
           metadata: session.metadata,
-          priceVerified
+          test_mode: isTestMode
         }),
         {
           status: 200,
@@ -275,14 +298,14 @@ serve(async (req) => {
         rawType: stripeError.rawType
       }, null, 2));
       
-      // If the error is related to the price, try with the fallback price
-      if (stripeError.param === 'line_items[0][price]') {
-        console.log('Price error detected, trying with fallback price:', FALLBACK_PRICE_ID);
+      // If the error is related to the price, try with the test price in test mode
+      if (isTestMode && stripeError.param === 'line_items[0][price]' && validatedPriceId !== TEST_PRICE_ID) {
+        console.log('Price error detected, trying with test price:', TEST_PRICE_ID);
         try {
-          sessionOptions.line_items[0].price = FALLBACK_PRICE_ID;
-          console.log('Creating checkout session with fallback price...');
+          sessionOptions.line_items[0].price = TEST_PRICE_ID;
+          console.log('Creating checkout session with test price...');
           const session = await stripe.checkout.sessions.create(sessionOptions);
-          console.log('Checkout session created successfully with fallback price:', session.id);
+          console.log('Checkout session created successfully with test price:', session.id);
           
           return new Response(
             JSON.stringify({ 
@@ -290,7 +313,8 @@ serve(async (req) => {
               url: session.url,
               success: true,
               metadata: session.metadata,
-              usedFallbackPrice: true
+              usedTestPrice: true,
+              test_mode: isTestMode
             }),
             {
               status: 200,
@@ -298,8 +322,8 @@ serve(async (req) => {
             }
           );
         } catch (fallbackError: any) {
-          console.error('Error with fallback price:', fallbackError);
-          console.error('Fallback error details:', JSON.stringify({
+          console.error('Error with test price:', fallbackError);
+          console.error('Test price error details:', JSON.stringify({
             type: fallbackError.type,
             code: fallbackError.code,
             param: fallbackError.param,
@@ -309,11 +333,12 @@ serve(async (req) => {
           
           return new Response(
             JSON.stringify({ 
-              error: "Failed to create checkout session with fallback price",
+              error: "Failed to create checkout session with test price",
               details: fallbackError.message,
               code: fallbackError.code,
               type: fallbackError.type,
-              success: false
+              success: false,
+              test_mode: isTestMode
             }),
             {
               status: 400,
@@ -330,7 +355,8 @@ serve(async (req) => {
           code: stripeError.code,
           param: stripeError.param,
           statusCode: stripeError.statusCode,
-          success: false
+          success: false,
+          test_mode: isTestMode
         }),
         {
           status: 400,
@@ -346,7 +372,8 @@ serve(async (req) => {
       JSON.stringify({ 
         error: error.message,
         success: false,
-        stack: error.stack
+        stack: error.stack,
+        test_mode: isTestMode
       }),
       {
         status: 500,

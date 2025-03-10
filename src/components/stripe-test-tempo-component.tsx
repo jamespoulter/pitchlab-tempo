@@ -23,6 +23,14 @@ export default function StripeTestTempoComponent({ user, priceId, trialPeriodDay
 
   const supabase = createClient();
 
+  // Get the site URL based on environment
+  const getSiteUrl = () => {
+    const isProd = process.env.NODE_ENV === 'production';
+    return isProd 
+      ? 'https://www.pitchhub.agency' 
+      : window.location.origin;
+  };
+
   // Load Stripe.js manually with advanced fraud signals disabled
   useEffect(() => {
     // Only load Stripe once
@@ -59,6 +67,9 @@ export default function StripeTestTempoComponent({ user, priceId, trialPeriodDay
     setDebugInfo({});
 
     try {
+      // Get the site URL based on environment
+      const siteUrl = getSiteUrl();
+      
       console.log("Creating checkout session with:", {
         price_id: priceId,
         user_id: user?.id,
@@ -71,7 +82,7 @@ export default function StripeTestTempoComponent({ user, priceId, trialPeriodDay
         checkoutParams: {
           price_id: priceId,
           user_id: user?.id,
-          return_url: `${window.location.origin}/dashboard`,
+          return_url: `${siteUrl}/dashboard`,
           trial_period_days: trialPeriodDays,
         }
       }));
@@ -81,7 +92,7 @@ export default function StripeTestTempoComponent({ user, priceId, trialPeriodDay
         body: {
           price_id: priceId,
           user_id: user.id,
-          return_url: `${window.location.origin}/dashboard`,
+          return_url: `${siteUrl}/dashboard`,
           trial_period_days: trialPeriodDays,
         },
         headers: {

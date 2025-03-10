@@ -20,6 +20,14 @@ export default function StripeDebugComponent({ user, priceId, trialPeriodDays }:
   
   const supabase = createClient();
 
+  // Get the site URL based on environment
+  const getSiteUrl = () => {
+    const isProd = process.env.NODE_ENV === 'production';
+    return isProd 
+      ? 'https://www.pitchhub.agency' 
+      : window.location.origin;
+  };
+
   // Test direct function invocation
   const testDirectInvocation = async () => {
     setIsLoading(true);
@@ -28,17 +36,21 @@ export default function StripeDebugComponent({ user, priceId, trialPeriodDays }:
     setRawResponse(null);
 
     try {
+      // Get the site URL based on environment
+      const siteUrl = getSiteUrl();
+      
       console.log("Testing direct function invocation with:", {
         price_id: priceId,
         user_id: user.id,
-        trial_period_days: trialPeriodDays
+        trial_period_days: trialPeriodDays,
+        return_url: `${siteUrl}/dashboard`
       });
 
       const { data, error: functionError } = await supabase.functions.invoke('create-checkout', {
         body: {
           price_id: priceId,
           user_id: user.id,
-          return_url: `${window.location.origin}/dashboard`,
+          return_url: `${siteUrl}/dashboard`,
           trial_period_days: Number(trialPeriodDays),
         },
         headers: {
@@ -80,10 +92,13 @@ export default function StripeDebugComponent({ user, priceId, trialPeriodDays }:
         throw new Error('Supabase URL or anon key is missing');
       }
 
+      // Get the site URL based on environment
+      const siteUrl = getSiteUrl();
+
       const payload = {
         price_id: priceId,
         user_id: user.id,
-        return_url: `${window.location.origin}/dashboard`,
+        return_url: `${siteUrl}/dashboard`,
         trial_period_days: Number(trialPeriodDays),
       };
 
