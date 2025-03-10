@@ -1,6 +1,5 @@
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import { AgencyProfile, AgencyProfileFormData, AgencyBranding, AgencyAsset, AgencyAssetFormData, AgencyCredential, AgencyCredentialFormData, CaseStudy, CaseStudyFormData, TeamMember, TeamMemberFormData, Service, ServiceFormData, Testimonial, TestimonialFormData } from "@/types/agency";
 
 /**
@@ -20,44 +19,52 @@ export const createClient = () => {
       supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
       supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     });
+  } else {
+    // Server-side: this should not be called directly from client components
+    // This is a fallback that will be removed in production builds if not used
+    console.warn('Server-side Supabase client should not be created in client components');
+    return null;
+  }
+};
+
+// Export a separate function for server components that can be tree-shaken
+export const getServerClient = async () => {
+  // This function should only be imported by server components
+  // Dynamic import to prevent client components from bundling server-only code
+  if (typeof window !== 'undefined') {
+    console.error('getServerClient should only be called from server components');
+    return null;
   }
   
-  // Server-side: use createServerClient with cookies
-  // This returns a thenable object that will resolve to the server client when awaited
-  return {
-    then: (resolve: Function) => {
-      const cookieStore = cookies();
-      const client = createServerClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          cookies: {
-            getAll() {
-              try {
-                return cookieStore.getAll().map(({ name, value }) => ({
-                  name,
-                  value,
-                }));
-              } catch (error) {
-                console.error("Error accessing cookies:", error);
-                return [];
-              }
-            },
-            setAll(cookiesToSet: any[]) {
-              try {
-                cookiesToSet.forEach(({ name, value, options }) => {
-                  cookieStore.set(name, value, options);
-                });
-              } catch (error) {
-                console.error("Error setting cookies:", error);
-              }
-            },
-          },
-        }
-      );
-      resolve(client);
+  // Dynamic import to prevent client components from bundling server-only code
+  const { cookies } = await import('next/headers');
+  const cookieStore = cookies();
+  
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        get(name) {
+          return cookieStore.get(name)?.value;
+        },
+        set(name, value, options) {
+          try {
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            // This can happen when cookies are manipulated by server actions
+          }
+        },
+        remove(name, options) {
+          try {
+            cookieStore.set({ name, value: "", ...options });
+          } catch (error) {
+            // This can happen when cookies are manipulated by server actions
+          }
+        },
+      },
     }
-  };
+  );
 };
 
 /**
@@ -604,42 +611,26 @@ export async function uploadAgencyAssetFile(file: File): Promise<{ success: bool
 // Agency Credentials Functions
 
 export async function getAgencyCredentials(): Promise<AgencyCredential[]> {
+  const supabase = createClient();
+  
   try {
-    const supabase = createClient();
-    const user = await supabase.auth.getUser();
-    
-    if (!user.data.user) {
-      console.error("No authenticated user found");
-      return [];
-    }
-    
     const { data, error } = await supabase
-      .from("agency_credentials")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .from('agency_credentials')
+      .select('*')
+      .order('created_at', { ascending: false });
     
-    if (error) {
-      console.error("Error fetching agency credentials:", error);
-      return [];
-    }
-    
+    if (error) throw error;
     return data || [];
   } catch (error) {
-    console.error("Error in getAgencyCredentials:", error);
+    console.error('Error fetching agency credentials:', error);
     return [];
   }
 }
 
 export async function getAgencyCredentialById(credentialId: string): Promise<AgencyCredential | null> {
+  const supabase = createClient();
+  
   try {
-    const supabase = createClient();
-    const user = await supabase.auth.getUser();
-    
-    if (!user.data.user) {
-      console.error("No authenticated user found");
-      return null;
-    }
-    
     const { data, error } = await supabase
       .from("agency_credentials")
       .select("*")
@@ -659,129 +650,124 @@ export async function getAgencyCredentialById(credentialId: string): Promise<Age
 }
 
 export async function createAgencyCredential(credentialData: AgencyCredentialFormData): Promise<{ success: boolean; data?: AgencyCredential; error?: any }> {
+  const supabase = createClient();
+  
   try {
-    const supabase = createClient();
-    const user = await supabase.auth.getUser();
+    const { data: { user } } = await supabase.auth.getUser();
     
-    if (!user.data.user) {
-      console.error("No authenticated user found");
-      return { success: false, error: "No authenticated user found" };
+    if (!user) {
+      throw new Error('User not authenticated');
     }
     
     const { data, error } = await supabase
-      .from("agency_credentials")
+      .from('agency_credentials')
       .insert({
         ...credentialData,
-        user_id: user.data.user.id,
+        user_id: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
-      .select()
+      .select('*')
       .single();
     
-    if (error) {
-      console.error("Error creating agency credential:", error);
-      return { success: false, error };
-    }
+    if (error) throw error;
     
-    return { success: true, data };
+    return {
+      success: true,
+      data
+    };
   } catch (error) {
-    console.error("Error in createAgencyCredential:", error);
-    return { success: false, error };
+    console.error('Error creating agency credential:', error);
+    return {
+      success: false,
+      error
+    };
   }
 }
 
 export async function updateAgencyCredential(credentialId: string, credentialData: Partial<AgencyCredentialFormData>): Promise<{ success: boolean; data?: AgencyCredential; error?: any }> {
+  const supabase = createClient();
+  
   try {
-    const supabase = createClient();
-    const user = await supabase.auth.getUser();
-    
-    if (!user.data.user) {
-      console.error("No authenticated user found");
-      return { success: false, error: "No authenticated user found" };
-    }
-    
     const { data, error } = await supabase
-      .from("agency_credentials")
-      .update(credentialData)
-      .eq("id", credentialId)
-      .select()
+      .from('agency_credentials')
+      .update({
+        ...credentialData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', credentialId)
+      .select('*')
       .single();
     
-    if (error) {
-      console.error("Error updating agency credential:", error);
-      return { success: false, error };
-    }
+    if (error) throw error;
     
-    return { success: true, data };
+    return {
+      success: true,
+      data
+    };
   } catch (error) {
-    console.error("Error in updateAgencyCredential:", error);
-    return { success: false, error };
+    console.error('Error updating agency credential:', error);
+    return {
+      success: false,
+      error
+    };
   }
 }
 
 export async function deleteAgencyCredential(credentialId: string): Promise<{ success: boolean; error?: any }> {
+  const supabase = createClient();
+  
   try {
-    const supabase = createClient();
-    const user = await supabase.auth.getUser();
-    
-    if (!user.data.user) {
-      console.error("No authenticated user found");
-      return { success: false, error: "No authenticated user found" };
-    }
-    
     const { error } = await supabase
-      .from("agency_credentials")
+      .from('agency_credentials')
       .delete()
-      .eq("id", credentialId);
+      .eq('id', credentialId);
     
-    if (error) {
-      console.error("Error deleting agency credential:", error);
-      return { success: false, error };
-    }
+    if (error) throw error;
     
-    return { success: true };
+    return {
+      success: true
+    };
   } catch (error) {
-    console.error("Error in deleteAgencyCredential:", error);
-    return { success: false, error };
+    console.error('Error deleting agency credential:', error);
+    return {
+      success: false,
+      error
+    };
   }
 }
 
 export async function uploadCredentialImage(file: File): Promise<{ success: boolean; url?: string; error?: any }> {
+  const supabase = createClient();
+  
   try {
-    const supabase = createClient();
-    const user = await supabase.auth.getUser();
-    
-    if (!user.data.user) {
-      console.error("No authenticated user found");
-      return { success: false, error: "No authenticated user found" };
-    }
-    
-    // Create a unique file path
+    // Create a unique file name
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-    const filePath = `${user.data.user.id}/credentials/${fileName}`;
+    const filePath = `credential_images/${fileName}`;
     
     // Upload the file
-    const { data, error } = await supabase.storage
-      .from('agency-assets')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
+    const { error: uploadError } = await supabase.storage
+      .from('agency-credentials')
+      .upload(filePath, file);
     
-    if (error) {
-      console.error("Error uploading credential image:", error);
-      return { success: false, error };
-    }
+    if (uploadError) throw uploadError;
     
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('agency-assets')
+      .from('agency-credentials')
       .getPublicUrl(filePath);
     
-    return { success: true, url: publicUrl };
+    return {
+      success: true,
+      url: publicUrl
+    };
   } catch (error) {
-    console.error("Error in uploadCredentialImage:", error);
-    return { success: false, error };
+    console.error('Error uploading credential image:', error);
+    return {
+      success: false,
+      error
+    };
   }
 }
 

@@ -89,9 +89,9 @@ export default function CredentialsPage() {
         image_url: credentialData.image || credentialData.image_url,
       };
       
-      const { success, data, error } = await createAgencyCredential(formattedData);
+      const { data, error } = await createAgencyCredential(formattedData);
       
-      if (success && data) {
+      if (data) {
         setCredentials([data, ...credentials]);
         toast.success("Credential added successfully");
       } else {
@@ -106,9 +106,9 @@ export default function CredentialsPage() {
   
   const handleUpdateCredential = async (credentialId: string, credentialData: any) => {
     try {
-      const { success, data, error } = await updateAgencyCredential(credentialId, credentialData);
+      const { data, error } = await updateAgencyCredential(credentialId, credentialData);
       
-      if (success && data) {
+      if (data) {
         // Update the credential in the state
         setCredentials(credentials.map(cred => 
           cred.id === credentialId ? data : cred
@@ -134,9 +134,9 @@ export default function CredentialsPage() {
     
     setIsDeleting(true);
     try {
-      const { success, error } = await deleteAgencyCredential(credentialToDelete);
+      const { data, error } = await deleteAgencyCredential(credentialToDelete);
       
-      if (success) {
+      if (data) {
         setCredentials(credentials.filter(cred => cred.id !== credentialToDelete));
         toast.success("Credential deleted successfully");
       } else {
