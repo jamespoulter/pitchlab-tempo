@@ -125,7 +125,7 @@ serve(async (req) => {
       metadata: {
         user_id,
       },
-      // Enable automatic tax calculation if configured in Stripe
+      // Enable automatic tax calculation now that it's configured in Stripe
       automatic_tax: { enabled: true },
       // Allow promotion codes to be applied at checkout
       allow_promotion_codes: true,
