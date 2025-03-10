@@ -1,4 +1,4 @@
-`import { createClient } from "../../../supabase/server";
+import { createClient } from "../../../supabase/server";
 import { redirect } from "next/navigation";
 import StripeDebugComponent from "@/components/stripe-debug-component";
 
