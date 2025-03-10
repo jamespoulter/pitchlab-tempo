@@ -64,11 +64,15 @@ export default function StripeRedirectHandler() {
             setAlertType('success');
             setMessage('Your payment was successful! Your subscription is now active.');
             
-            // Clean up the URL by removing query parameters after a short delay
+            // Clean up the URL by removing query parameters
+            const cleanUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+            
+            // Add a short delay before redirecting to ensure the user sees the success message
             setTimeout(() => {
-              const cleanUrl = window.location.pathname;
-              window.history.replaceState({}, document.title, cleanUrl);
-            }, 1000);
+              // Navigate to the dashboard
+              router.push('/dashboard');
+            }, 2000);
           } else {
             // No active subscription found yet, might be processing
             setAlertType('loading');

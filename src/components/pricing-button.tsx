@@ -47,11 +47,18 @@ export default function PricingButton({ item, user }: { item: Plan, user: any })
             // User is logged in, create checkout session
             const supabase = createClient();
             
+            // Ensure the return URL is properly formatted
+            // We want to make sure we're redirecting to the dashboard with the session_id parameter
+            const origin = window.location.origin;
+            const returnUrl = `${origin}/dashboard`;
+            
+            console.log('Creating checkout session with return URL:', returnUrl);
+            
             const { data, error } = await supabase.functions.invoke('create-checkout', {
                 body: {
                     price_id: item.id,
                     user_id: user.id,
-                    return_url: `${window.location.origin}${redirectTo}`,
+                    return_url: returnUrl,
                     trial_period_days: item.product?.metadata?.trial_period_days || '7',
                 },
                 headers: {
