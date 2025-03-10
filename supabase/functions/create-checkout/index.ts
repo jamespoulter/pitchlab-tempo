@@ -13,15 +13,35 @@ if (!stripeKey) {
 // Fallback price ID to use if the provided price ID is invalid
 const FALLBACK_PRICE_ID = 'price_1R07PCI7Diy7LoDfEfcS7u3L';
 
-const stripe = new Stripe(stripeKey, {
-  apiVersion: '2023-10-16',
-  httpClient: Stripe.createFetchHttpClient(),
-});
+// Initialize Stripe with detailed error logging
+let stripe: Stripe;
+try {
+  stripe = new Stripe(stripeKey, {
+    apiVersion: '2023-10-16',
+    httpClient: Stripe.createFetchHttpClient(),
+  });
+  console.log("Stripe initialized successfully");
+} catch (error) {
+  console.error("Failed to initialize Stripe:", error);
+  throw new Error("Failed to initialize Stripe client");
+}
 
 // Initialize Supabase client
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error("Supabase environment variables are not set correctly!");
+}
+
+let supabase;
+try {
+  supabase = createClient(supabaseUrl, supabaseServiceKey);
+  console.log("Supabase client initialized successfully");
+} catch (error) {
+  console.error("Failed to initialize Supabase client:", error);
+  throw new Error("Failed to initialize Supabase client");
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,27 +56,73 @@ serve(async (req) => {
 
   try {
     console.log('Received request to create checkout session');
+    console.log('Request URL:', req.url);
+    console.log('Request method:', req.method);
+    console.log('Request headers:', JSON.stringify(Object.fromEntries(req.headers.entries()), null, 2));
     
     // Parse the request body
-    const requestBody = await req.json();
-    console.log('Request body:', JSON.stringify(requestBody, null, 2));
+    let requestBody;
+    try {
+      requestBody = await req.json();
+      console.log('Request body:', JSON.stringify(requestBody, null, 2));
+    } catch (parseError) {
+      console.error('Error parsing request body:', parseError);
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid request body format",
+          details: parseError.message,
+          success: false
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
+    }
     
     const { price_id, user_id, return_url, trial_period_days, coupon_id } = requestBody;
     
     // Validate required parameters
     if (!price_id) {
       console.error('Missing price_id parameter');
-      throw new Error('Missing price_id parameter');
+      return new Response(
+        JSON.stringify({ 
+          error: "Missing price_id parameter",
+          success: false
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
     
     if (!user_id) {
       console.error('Missing user_id parameter');
-      throw new Error('Missing user_id parameter');
+      return new Response(
+        JSON.stringify({ 
+          error: "Missing user_id parameter",
+          success: false
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
     
     if (!return_url) {
       console.error('Missing return_url parameter');
-      throw new Error('Missing return_url parameter');
+      return new Response(
+        JSON.stringify({ 
+          error: "Missing return_url parameter",
+          success: false
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
     
     // Verify the user from the auth token if available
@@ -66,6 +132,8 @@ serve(async (req) => {
     if (authHeader) {
       try {
         const token = authHeader.replace('Bearer ', '');
+        console.log('Verifying user with token');
+        
         const { data: { user }, error } = await supabase.auth.getUser(token);
         
         if (error) {
@@ -83,6 +151,8 @@ serve(async (req) => {
       } catch (authError) {
         console.error('Error processing auth token:', authError);
       }
+    } else {
+      console.log('No Authorization header found, using provided user_id');
     }
     
     // Validate the price ID - don't use 'price_default'
@@ -126,6 +196,9 @@ serve(async (req) => {
     const customerEmail = req.headers.get('X-Customer-Email');
     if (customerEmail) {
       sessionOptions.customer_email = customerEmail;
+      console.log('Using customer email:', customerEmail);
+    } else {
+      console.log('No customer email provided');
     }
 
     // Add subscription trial period if specified
@@ -153,15 +226,26 @@ serve(async (req) => {
     
     try {
       // Verify the price exists before creating the session
+      let priceVerified = false;
       try {
+        console.log('Verifying price ID:', validatedPriceId);
         const price = await stripe.prices.retrieve(validatedPriceId);
         console.log('Price verified:', price.id);
+        console.log('Price details:', JSON.stringify({
+          active: price.active,
+          currency: price.currency,
+          product: price.product,
+          unit_amount: price.unit_amount,
+          type: price.type
+        }, null, 2));
+        priceVerified = true;
       } catch (priceError) {
         console.error('Error verifying price:', priceError);
         console.log('Using fallback price ID:', FALLBACK_PRICE_ID);
         sessionOptions.line_items[0].price = FALLBACK_PRICE_ID;
       }
       
+      console.log('Creating checkout session with Stripe API...');
       const session = await stripe.checkout.sessions.create(sessionOptions);
       console.log('Checkout session created successfully:', session.id);
       console.log('Session URL:', session.url);
@@ -172,7 +256,8 @@ serve(async (req) => {
           sessionId: session.id, 
           url: session.url,
           success: true,
-          metadata: session.metadata
+          metadata: session.metadata,
+          priceVerified
         }),
         {
           status: 200,
@@ -185,7 +270,9 @@ serve(async (req) => {
         type: stripeError.type,
         code: stripeError.code,
         param: stripeError.param,
-        message: stripeError.message
+        message: stripeError.message,
+        statusCode: stripeError.statusCode,
+        rawType: stripeError.rawType
       }, null, 2));
       
       // If the error is related to the price, try with the fallback price
@@ -193,6 +280,7 @@ serve(async (req) => {
         console.log('Price error detected, trying with fallback price:', FALLBACK_PRICE_ID);
         try {
           sessionOptions.line_items[0].price = FALLBACK_PRICE_ID;
+          console.log('Creating checkout session with fallback price...');
           const session = await stripe.checkout.sessions.create(sessionOptions);
           console.log('Checkout session created successfully with fallback price:', session.id);
           
@@ -201,7 +289,8 @@ serve(async (req) => {
               sessionId: session.id, 
               url: session.url,
               success: true,
-              metadata: session.metadata
+              metadata: session.metadata,
+              usedFallbackPrice: true
             }),
             {
               status: 200,
@@ -210,10 +299,20 @@ serve(async (req) => {
           );
         } catch (fallbackError: any) {
           console.error('Error with fallback price:', fallbackError);
+          console.error('Fallback error details:', JSON.stringify({
+            type: fallbackError.type,
+            code: fallbackError.code,
+            param: fallbackError.param,
+            message: fallbackError.message,
+            statusCode: fallbackError.statusCode
+          }, null, 2));
+          
           return new Response(
             JSON.stringify({ 
               error: "Failed to create checkout session with fallback price",
               details: fallbackError.message,
+              code: fallbackError.code,
+              type: fallbackError.type,
               success: false
             }),
             {
@@ -230,6 +329,7 @@ serve(async (req) => {
           type: stripeError.type,
           code: stripeError.code,
           param: stripeError.param,
+          statusCode: stripeError.statusCode,
           success: false
         }),
         {
@@ -249,7 +349,7 @@ serve(async (req) => {
         stack: error.stack
       }),
       {
-        status: 400,
+        status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
