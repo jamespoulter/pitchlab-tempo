@@ -4,13 +4,18 @@ import { SupabaseAuthProvider } from './supabase-auth-provider';
 import SubscriptionRedirect from '../subscription-redirect';
 import ErrorBoundary from '../error-boundary';
 import { Toaster } from 'react-hot-toast';
+import { Suspense } from 'react';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>
       <SupabaseAuthProvider>
-        <SubscriptionRedirect />
-        {children}
+        <Suspense fallback={<div>Loading subscription status...</div>}>
+          <SubscriptionRedirect />
+        </Suspense>
+        <Suspense fallback={<div>Loading...</div>}>
+          {children}
+        </Suspense>
         <Toaster 
           position="top-right"
           toastOptions={{

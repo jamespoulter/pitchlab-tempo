@@ -1,4 +1,4 @@
-`import { createClient } from "../../../../../supabase/server";
+import { createClient } from "../../../../../supabase/server";
 import { NextResponse } from "next/server";
 import { hasActiveSubscription } from "@/utils/subscription";
 
@@ -87,13 +87,13 @@ export async function GET(request: Request) {
             console.log("Creating new user record in users table");
             
             // Extract name from user metadata
-            let name = data.user.user_metadata.full_name || 
+            const name = data.user.user_metadata.full_name || 
                       data.user.user_metadata.name || 
                       data.user.email?.split('@')[0] || 
                       'User';
                       
             // Extract avatar URL from user metadata
-            let avatarUrl = data.user.user_metadata.avatar_url || 
+            const avatarUrl = data.user.user_metadata.avatar_url || 
                            data.user.user_metadata.picture || 
                            null;
             

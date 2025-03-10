@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createClientComponentClient } from '@supabase/ssr';
 import { toast } from 'react-hot-toast';
 
 interface Plan {
@@ -105,4 +105,4 @@ export default function PricingButton({ item, user }: { item: Plan, user: any })
             )}
         </button>
     );
-} 
+}
