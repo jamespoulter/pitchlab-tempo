@@ -10,25 +10,35 @@ import {
     CardHeader,
     CardTitle
 } from "./ui/card";
-import { supabase } from "../../supabase/supabase";
+import { createClient } from "@/utils/supabase-browser";
 import { Check, Sparkles } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useAuth } from "./providers/supabase-auth-provider";
 
 interface PlanFeature {
     name: string;
     included: boolean;
 }
 
-export default function PricingCard({ item, user }: {
+export default function PricingCard({ item, user: propUser }: {
     item: any,
     user: User | null
 }) {
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     
-    // Debug the item data
+    // Use the auth context for consistent user information
+    const { user: contextUser, session } = useAuth();
+    
+    // Use the user from props if provided, otherwise use the user from context
+    const user = propUser || contextUser;
+    
+    // Debug the item data and user
     useEffect(() => {
         console.log("PricingCard item:", item);
-    }, [item]);
+        console.log("PricingCard user:", user);
+        console.log("PricingCard session:", session);
+    }, [item, user, session]);
 
     // Extract features from plan metadata or product metadata
     const features: PlanFeature[] = item?.product?.metadata?.features 
@@ -55,10 +65,21 @@ export default function PricingCard({ item, user }: {
     // Handle checkout process
     const handleCheckout = async (priceId: string) => {
         setIsLoading(true);
+        setError(null);
 
         try {
+            // Validate the price ID - don't use 'price_default'
+            if (priceId === 'price_default') {
+                console.error("Invalid price ID: price_default");
+                setError("Invalid price ID. Please contact support.");
+                setIsLoading(false);
+                return;
+            }
+
             // Get trial period days from metadata if available
-            const trialPeriodDays = item?.product?.metadata?.trial_period_days || 7;
+            const trialPeriodDays = item?.product?.metadata?.trial_period_days 
+                ? parseInt(item.product.metadata.trial_period_days, 10) 
+                : 7;
             
             console.log("Creating checkout session with:", {
                 price_id: priceId,
@@ -66,47 +87,68 @@ export default function PricingCard({ item, user }: {
                 trial_period_days: trialPeriodDays
             });
             
-            if (user) {
-                // User is logged in, proceed with normal checkout
-                const { data, error } = await supabase.functions.invoke('create-checkout', {
-                    body: {
-                        price_id: priceId,
-                        user_id: user.id,
-                        return_url: `${window.location.origin}/dashboard`,
-                        trial_period_days: trialPeriodDays,
-                    },
-                    headers: {
-                        'X-Customer-Email': user.email || '',
-                    }
-                });
-
-                if (error) {
-                    console.error("Checkout error:", error);
-                    throw error;
-                }
-
-                console.log("Checkout response:", data);
-
-                // Redirect to Stripe checkout
-                if (data?.url) {
-                    window.location.href = data.url;
-                } else {
-                    throw new Error('No checkout URL returned');
-                }
-            } else {
+            if (!user) {
                 // User is not logged in, redirect to signup with plan info
-                // Store the selected plan in localStorage
                 localStorage.setItem('selectedPlanId', priceId);
                 localStorage.setItem('trialPeriodDays', trialPeriodDays.toString());
-                
-                // Redirect to signup page with plan info in URL and redirect_to parameter
-                // This ensures the user is redirected back to the pricing page after authentication
                 window.location.href = `/signup?plan=${priceId}&trial=${trialPeriodDays}&redirect_to=/pricing`;
+                return;
             }
-        } catch (error) {
+            
+            // User is logged in, proceed with normal checkout
+            const supabase = createClient();
+            
+            // Ensure we have a valid user ID
+            if (!user.id) {
+                console.error("User ID is missing");
+                setError("User ID is missing. Please try logging in again.");
+                setIsLoading(false);
+                return;
+            }
+            
+            // Create a simple checkout payload with only the required fields
+            const checkoutPayload = {
+                price_id: priceId,
+                user_id: user.id,
+                return_url: `${window.location.origin}/dashboard`,
+                trial_period_days: trialPeriodDays,
+            };
+            
+            console.log("Sending checkout payload:", checkoutPayload);
+            
+            // Include the session token in the request if available
+            const headers: Record<string, string> = {
+                'X-Customer-Email': user.email || '',
+            };
+            
+            if (session?.access_token) {
+                headers['Authorization'] = `Bearer ${session.access_token}`;
+            }
+            
+            const { data, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
+                body: checkoutPayload,
+                headers
+            });
+
+            if (checkoutError) {
+                console.error("Checkout error:", checkoutError);
+                setError(`Error creating checkout: ${checkoutError.message}`);
+                setIsLoading(false);
+                return;
+            }
+
+            console.log("Checkout response:", data);
+
+            // Redirect to Stripe checkout
+            if (data?.url) {
+                window.location.href = data.url;
+            } else {
+                setError('No checkout URL returned');
+                setIsLoading(false);
+            }
+        } catch (error: any) {
             console.error('Error creating checkout session:', error);
-            // You could add error handling UI here
-        } finally {
+            setError(error.message || 'An unknown error occurred');
             setIsLoading(false);
         }
     };
@@ -148,6 +190,13 @@ export default function PricingCard({ item, user }: {
             </CardHeader>
             
             <CardContent className="relative pb-4">
+                {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                        <h3 className="font-medium text-red-800 mb-2">Error</h3>
+                        <p className="text-red-700">{error}</p>
+                    </div>
+                )}
+                
                 <div className="bg-blue-50 p-4 rounded-lg mb-6">
                     <h4 className="font-medium text-blue-800 mb-2">Top Features:</h4>
                     <ul className="space-y-2">
@@ -183,9 +232,7 @@ export default function PricingCard({ item, user }: {
             
             <CardFooter className="relative pt-2">
                 <Button
-                    onClick={async () => {
-                        await handleCheckout(item.id)
-                    }}
+                    onClick={() => handleCheckout(item.id)}
                     disabled={isLoading}
                     className="w-full py-6 text-lg font-medium bg-blue-600 hover:bg-blue-700"
                 >

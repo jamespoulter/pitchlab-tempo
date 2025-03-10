@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { Inter, Montserrat, Work_Sans } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import { Providers } from "@/components/providers/providers";
+import { TempoScripts } from "@/components/tempo-scripts";
 
 // Body font - Inter with weights 500, 600 for UI elements
 const inter = Inter({ 
@@ -50,11 +52,14 @@ export default function RootLayout({
             };
           `}
         </Script>
-        <Script src="https://api.tempolabs.ai/proxy-asset?url=https://storage.googleapis.com/tempo-public-assets/error-handling.js" />
+        {/* Tempo scripts moved to a client component */}
+        <TempoScripts />
       </head>
       <body className={inter.className}>
-        {children}
-        <TempoInit />
+        <Providers>
+          {children}
+          <TempoInit />
+        </Providers>
       </body>
     </html>
   );

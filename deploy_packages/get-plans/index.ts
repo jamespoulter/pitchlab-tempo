@@ -16,38 +16,7 @@ const corsHeaders = {
 }
 
 // Fallback price ID to use if no prices are found for the specified product
-// Using test mode price ID
-const FALLBACK_PRICE_ID = 'price_1R07PCI7Diy7LoDfEfcS7u3L';
-const FALLBACK_PRODUCT_ID = 'prod_RtvFwU7NJ0AK7g';
-
-// Default fallback plan to return if no plans are found
-const createFallbackPlan = () => ({
-    id: FALLBACK_PRICE_ID,
-    object: "plan",
-    active: true,
-    amount: 4500,
-    amount_decimal: "4500",
-    currency: "gbp",
-    interval: "month",
-    interval_count: 1,
-    product: {
-        id: FALLBACK_PRODUCT_ID,
-        name: "PitchHub Plus",
-        metadata: {
-            trial_period_days: "7",
-            description: "Full access to all PitchHub Plus features",
-            features: JSON.stringify([
-                { name: "Unlimited Pitches", included: true },
-                { name: "AI-Powered Content", included: true },
-                { name: "Custom Branding", included: true },
-                { name: "Team Collaboration", included: true }
-            ])
-        }
-    },
-    metadata: {},
-    popular: true,
-    trial_period_days: 7
-});
+const FALLBACK_PRICE_ID = 'price_1R0QA2I7Diy7LoDft8J57jK3';
 
 // IMPORTANT: This function now tries to fetch a real price from Stripe first
 // before falling back to a default plan structure (without an actual price ID)
@@ -156,12 +125,13 @@ serve(async (req) => {
                         );
                     } catch (fallbackError) {
                         console.error("Error retrieving fallback price:", fallbackError);
-                        // Return a default fallback plan
                         return new Response(
-                            JSON.stringify([createFallbackPlan()]),
+                            JSON.stringify({ 
+                                error: "No prices found in your Stripe account. Please create at least one price in Stripe before continuing." 
+                            }),
                             { 
                                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                                status: 200 
+                                status: 400 
                             }
                         );
                     }
@@ -238,12 +208,13 @@ serve(async (req) => {
                         );
                     } catch (fallbackError) {
                         console.error("Error retrieving fallback price:", fallbackError);
-                        // Return a default fallback plan
                         return new Response(
-                            JSON.stringify([createFallbackPlan()]),
+                            JSON.stringify({ 
+                                error: "No prices found for the specified product. Please create a price for this product in Stripe." 
+                            }),
                             { 
                                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                                status: 200 
+                                status: 400 
                             }
                         );
                     }
@@ -326,12 +297,14 @@ serve(async (req) => {
                 );
             } catch (fallbackError) {
                 console.error("Error retrieving fallback price:", fallbackError);
-                // Return a default fallback plan
                 return new Response(
-                    JSON.stringify([createFallbackPlan()]),
+                    JSON.stringify({ 
+                        error: "Error connecting to Stripe API. Please check your Stripe API key and try again.",
+                        details: stripeError.message
+                    }),
                     { 
                         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                        status: 200 
+                        status: 400 
                     }
                 );
             }
@@ -375,12 +348,14 @@ serve(async (req) => {
             );
         } catch (fallbackError) {
             console.error("Error retrieving fallback price:", fallbackError);
-            // Return a default fallback plan
             return new Response(
-                JSON.stringify([createFallbackPlan()]),
+                JSON.stringify({ 
+                    error: "An unexpected error occurred. Please try again later.",
+                    details: error.message
+                }),
                 { 
                     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                    status: 200 
+                    status: 500 
                 }
             );
         }

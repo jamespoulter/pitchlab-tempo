@@ -33,8 +33,22 @@ type SubscriptionData = {
   ended_at?: number;
 };
 
-// @ts-ignore - Deno is available in the Supabase Edge Functions environment
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+// Get environment variables
+const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
+const stripeWebhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') || '';
+const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+
+// Log environment variable availability
+console.log("Environment variables available:", {
+  stripeKey: !!stripeKey,
+  stripeWebhookSecret: !!stripeWebhookSecret,
+  supabaseUrl: !!supabaseUrl,
+  supabaseServiceKey: !!supabaseServiceKey
+});
+
+// Initialize Stripe
+const stripe = new Stripe(stripeKey, {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 });
@@ -257,97 +271,117 @@ async function handleSubscriptionDeleted(supabaseClient: SupabaseClient, event: 
 async function handleCheckoutSessionCompleted(supabaseClient: SupabaseClient, event: any) {
   const session = event.data.object;
   console.log('Handling checkout session completed:', session.id);
-  console.log('Full session data:', JSON.stringify(session, null, 2));
-  
-  // Log all metadata fields to help debug
   console.log('Session metadata keys:', Object.keys(session.metadata || {}));
   console.log('Session metadata values:', Object.values(session.metadata || {}));
   console.log('Session metadata user_id:', session.metadata?.user_id);
-  
-  const subscriptionId = typeof session.subscription === 'string' 
-    ? session.subscription 
-    : session.subscription?.id;
-  
-  console.log('Extracted subscriptionId:', subscriptionId);
-  console.log('Session metadata:', JSON.stringify(session.metadata, null, 2));
-  
-  if (!subscriptionId) {
-    console.log('No subscription ID found in checkout session');
-    return new Response(
-      JSON.stringify({ message: "No subscription in checkout session" }),
-      { 
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
-    );
-  }
 
   try {
-    console.log('Attempting to update subscription in Stripe with ID:', subscriptionId);
-    console.log('Metadata to be added:', {
-      ...session.metadata,
-      checkoutSessionId: session.id
-    });
-    
-    // Fetch the current subscription from Stripe to get the latest status
-    const stripeSubscription = await stripe.subscriptions.retrieve(subscriptionId);
-    console.log('Retrieved Stripe subscription status:', stripeSubscription.status);
+    // Get the subscription from the session
+    const stripeSubscription = await stripe.subscriptions.retrieve(session.subscription);
     console.log('Stripe subscription metadata:', JSON.stringify(stripeSubscription.metadata, null, 2));
     
-    const updatedStripeSubscription = await stripe.subscriptions.update(
-      subscriptionId,
-      { 
-        metadata: {
-          ...session.metadata,
-          checkoutSessionId: session.id
-        }
-      }
-    );
+    // Try to get user information
+    let userId = session.metadata?.user_id;
     
-    console.log('Successfully updated Stripe subscription:', updatedStripeSubscription.id);
-    console.log('Updated Stripe metadata:', JSON.stringify(updatedStripeSubscription.metadata, null, 2));
+    if (!userId) {
+      console.log('No user_id in session metadata, checking subscription metadata');
+      userId = stripeSubscription.metadata?.user_id;
+    }
+    
+    if (!userId) {
+      try {
+        console.log('No user_id in metadata, attempting to find user by email');
+        const customer = await stripe.customers.retrieve(session.customer);
+        console.log('Customer email:', customer.email);
+        
+        const { data: userData } = await supabaseClient
+          .from('users')
+          .select('id')
+          .eq('email', customer.email)
+          .single();
 
-    console.log('Attempting to update subscription in Supabase with stripe_id:', subscriptionId);
-    console.log('User ID being set:', session.metadata?.user_id);
-    
-    const supabaseUpdateResult = await supabaseClient
-      .from("subscriptions")
-      .update({
-        metadata: {
-          ...session.metadata,
-          checkoutSessionId: session.id
-        },
-        user_id: session.metadata?.user_id,
-        status: stripeSubscription.status, // Update the status from Stripe
-        current_period_start: stripeSubscription.current_period_start,
-        current_period_end: stripeSubscription.current_period_end,
-        cancel_at_period_end: stripeSubscription.cancel_at_period_end
-      })
-      .eq("stripe_id", subscriptionId);
-    
-    console.log('Supabase update result:', JSON.stringify(supabaseUpdateResult, null, 2));
-    
-    if (supabaseUpdateResult.error) {
-      console.error('Error updating Supabase subscription:', supabaseUpdateResult.error);
-      throw new Error(`Supabase update failed: ${supabaseUpdateResult.error.message}`);
+        userId = userData?.id;
+        console.log('Found user by email:', userId);
+        
+        if (!userId) {
+          throw new Error('User not found');
+        }
+      } catch (error) {
+        console.error('Unable to find associated user:', error);
+        return new Response(
+          JSON.stringify({ error: "Unable to find associated user" }),
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    }
+
+    // Create subscription data
+    const subscriptionData: SubscriptionData = {
+      stripe_id: stripeSubscription.id,
+      user_id: userId,
+      price_id: stripeSubscription.items.data[0]?.price.id,
+      stripe_price_id: stripeSubscription.items.data[0]?.price.id,
+      currency: stripeSubscription.currency,
+      interval: stripeSubscription.items.data[0]?.plan.interval,
+      status: stripeSubscription.status,
+      current_period_start: stripeSubscription.current_period_start,
+      current_period_end: stripeSubscription.current_period_end,
+      cancel_at_period_end: stripeSubscription.cancel_at_period_end,
+      amount: stripeSubscription.items.data[0]?.plan.amount ?? 0,
+      started_at: stripeSubscription.start_date ?? Math.floor(Date.now() / 1000),
+      customer_id: stripeSubscription.customer,
+      metadata: {
+        ...stripeSubscription.metadata,
+        user_id: userId
+      },
+      canceled_at: stripeSubscription.canceled_at,
+      ended_at: stripeSubscription.ended_at
+    };
+
+    // First, check if a subscription with this stripe_id already exists
+    const { data: existingSubscription } = await supabaseClient
+      .from('subscriptions')
+      .select('id')
+      .eq('stripe_id', stripeSubscription.id)
+      .maybeSingle();
+
+    // Update subscription in database
+    const { error } = await supabaseClient
+      .from('subscriptions')
+      .upsert({
+        // If we found an existing subscription, use its UUID, otherwise let Supabase generate one
+        ...(existingSubscription?.id ? { id: existingSubscription.id } : {}),
+        ...subscriptionData
+      }, {
+        // Use stripe_id as the match key for upsert
+        onConflict: 'stripe_id'
+      });
+
+    if (error) {
+      console.error('Error creating subscription:', error);
+      return new Response(
+        JSON.stringify({ error: "Failed to create subscription" }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     return new Response(
-      JSON.stringify({ 
-        message: "Checkout session completed successfully",
-        subscriptionId 
-      }),
+      JSON.stringify({ message: "Subscription created successfully" }),
       { 
         status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
-  } catch (error: any) {
-    console.error('Error processing checkout completion:', error);
-    console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    console.error('Error stack:', error.stack);
+  } catch (error) {
+    console.error('Error handling checkout session completed:', error);
     return new Response(
-      JSON.stringify({ error: "Failed to process checkout completion", details: error.message }),
+      JSON.stringify({ error: "Failed to process checkout session" }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -465,136 +499,107 @@ async function handleInvoicePaymentFailed(supabaseClient: SupabaseClient, event:
 }
 
 // Main webhook handler
-serve(async (req: Request) => {
-  console.log('Received webhook request');
-  console.log('Method:', req.method);
-  
-  // Log headers in a way that works with the current TypeScript configuration
-  const headersObj: Record<string, string> = {};
-  req.headers.forEach((value, key) => {
-    headersObj[key] = value;
-  });
-  console.log('Headers:', JSON.stringify(headersObj, null, 2));
-  
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    console.log('Handling OPTIONS request');
-    return new Response(null, { 
-      status: 204,
-      headers: corsHeaders 
-    });
+    return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    console.log('Received webhook request:', req.url);
+    
+    // Verify the webhook signature
     const signature = req.headers.get('stripe-signature');
-    console.log('Stripe signature:', signature);
     
     if (!signature) {
-      console.error('No Stripe signature found in headers');
+      console.error('No Stripe signature found in request headers');
       return new Response(
-        JSON.stringify({ error: "No signature found" }),
+        JSON.stringify({ error: "No Stripe signature found" }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
-
+    
+    // Get the raw request body
     const body = await req.text();
     console.log('Request body:', body);
     
-    // @ts-ignore - Deno is available in the Supabase Edge Functions environment
-    const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET');
-    
-    if (!webhookSecret) {
-      console.error('Webhook secret not configured in environment variables');
-      return new Response(
-        JSON.stringify({ error: "Webhook secret not configured" }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
     let event;
     
     try {
-      console.log('Attempting to verify Stripe signature');
-      event = await stripe.webhooks.constructEventAsync(
+      // Verify the signature
+      event = stripe.webhooks.constructEvent(
         body,
         signature,
-        webhookSecret
+        stripeWebhookSecret
       );
       console.log('Stripe signature verified successfully');
-    } catch (err) {
-      console.error('Error verifying webhook signature:', err);
+    } catch (err: any) {
+      console.error(`Webhook signature verification failed: ${err.message}`);
       return new Response(
-        JSON.stringify({ error: "Invalid signature" }),
+        JSON.stringify({ error: `Webhook signature verification failed: ${err.message}` }),
         { 
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }
-
-    console.log('Processing webhook event:', event.type);
+    
+    console.log('Webhook event type:', event.type);
+    console.log('Webhook event data:', JSON.stringify(event.data.object, null, 2));
 
     // Create Supabase client with service role key to bypass RLS
-    // @ts-ignore - Deno is available in the Supabase Edge Functions environment
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    // @ts-ignore - Deno is available in the Supabase Edge Functions environment
-    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    
-    if (!supabaseUrl || !supabaseServiceRoleKey) {
-      console.error('Missing Supabase credentials:', { 
-        hasUrl: !!supabaseUrl, 
-        hasServiceKey: !!supabaseServiceRoleKey 
-      });
-      return new Response(
-        JSON.stringify({ error: "Supabase credentials not configured properly" }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-    
-    console.log('Creating Supabase client with service role key to bypass RLS');
-    const supabaseClient = createClient(supabaseUrl, supabaseServiceRoleKey);
+    const supabaseClient = createClient(supabaseUrl, supabaseServiceKey);
 
     // Log the webhook event
-    await logAndStoreWebhookEvent(supabaseClient, event, event.data.object);
+    try {
+      await logAndStoreWebhookEvent(supabaseClient, event, event.data.object);
+      console.log('Webhook event logged successfully');
+    } catch (error) {
+      console.error('Error logging webhook event:', error);
+      // Continue processing even if logging fails
+    }
 
-    // Handle the event based on type
+    // Handle different event types
+    let response;
+    
     switch (event.type) {
-      case 'customer.subscription.created':
-        return await handleSubscriptionCreated(supabaseClient, event);
-      case 'customer.subscription.updated':
-        return await handleSubscriptionUpdated(supabaseClient, event);
-      case 'customer.subscription.deleted':
-        return await handleSubscriptionDeleted(supabaseClient, event);
       case 'checkout.session.completed':
-        return await handleCheckoutSessionCompleted(supabaseClient, event);
+        response = await handleCheckoutSessionCompleted(supabaseClient, event);
+        break;
+      case 'customer.subscription.created':
+        response = await handleSubscriptionCreated(supabaseClient, event);
+        break;
+      case 'customer.subscription.updated':
+        response = await handleSubscriptionUpdated(supabaseClient, event);
+        break;
+      case 'customer.subscription.deleted':
+        response = await handleSubscriptionDeleted(supabaseClient, event);
+        break;
       case 'invoice.payment_succeeded':
-        return await handleInvoicePaymentSucceeded(supabaseClient, event);
+        response = await handleInvoicePaymentSucceeded(supabaseClient, event);
+        break;
       case 'invoice.payment_failed':
-        return await handleInvoicePaymentFailed(supabaseClient, event);
+        response = await handleInvoicePaymentFailed(supabaseClient, event);
+        break;
       default:
         console.log(`Unhandled event type: ${event.type}`);
-        return new Response(
-          JSON.stringify({ message: `Unhandled event type: ${event.type}` }),
+        response = new Response(
+          JSON.stringify({ received: true, type: event.type }),
           { 
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           }
         );
     }
-  } catch (err: any) {
-    console.error('Error processing webhook:', err);
-    console.error('Error stack:', err.stack);
+    
+    return response;
+  } catch (error: any) {
+    console.error('Error processing webhook:', error);
     return new Response(
-      JSON.stringify({ error: err.message }),
+      JSON.stringify({ error: `Webhook error: ${error.message}` }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

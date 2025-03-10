@@ -118,14 +118,83 @@ export default async function Pricing() {
         }
     });
     
-    // Filter to only show the PitchHub Plus product
-    const plans = allPlans?.filter((plan: Plan) => 
-        plan.product?.id === "prod_RuEdYVyOF1Vitg" || 
-        plan.product?.name === "PitchHub Plus"
-    );
+    // Debug the response
+    console.log("get-plans response:", { allPlans, error });
+    
+    // If there's an error, show it on the page
+    if (error) {
+        return (
+            <div className="container mx-auto px-4 py-16">
+                <div className="text-center mb-12">
+                    <h1 className="text-4xl font-bold mb-4">Never Go Looking for a Case Study Again</h1>
+                    <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+                        Get all your agency information, case studies, testimonials, and everything you need to win more business in one place
+                    </p>
+                </div>
+                
+                <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-3xl mx-auto">
+                    <h2 className="text-xl font-semibold text-red-800 mb-2">Error Loading Plans</h2>
+                    <p className="text-red-700 mb-4">{error.message || "An error occurred while loading pricing plans."}</p>
+                    <pre className="bg-white p-4 rounded text-sm overflow-auto">{JSON.stringify(error, null, 2)}</pre>
+                </div>
+            </div>
+        );
+    }
+    
+    // Initialize plans and commonFeatures
+    let plans: Plan[] = [];
+    let commonFeatures: string[] = [];
+    
+    // If there are no plans, use a fallback plan
+    if (!allPlans || !Array.isArray(allPlans) || allPlans.length === 0) {
+        console.log("No plans found, using fallback plan");
+        
+        // Create a fallback plan
+        const fallbackPlan: Plan = {
+            id: "price_1R0QA2I7Diy7LoDft8J57jK3",
+            name: "PitchHub Plus",
+            amount: 4500,
+            interval: "month",
+            popular: true,
+            product: {
+                id: "prod_RuEdYVyOF1Vitg",
+                name: "PitchHub Plus",
+                metadata: {
+                    features: JSON.stringify([
+                        { name: "Unlimited Pitches", included: true },
+                        { name: "AI-Powered Content", included: true },
+                        { name: "Custom Branding", included: true },
+                        { name: "Team Collaboration", included: true }
+                    ]),
+                    description: "Full access to all PitchHub Plus features",
+                    trial_period_days: "7",
+                    popular: "true"
+                }
+            }
+        };
+        
+        plans = [fallbackPlan];
+    } else {
+        // Filter to only show the PitchHub Plus product
+        plans = allPlans.filter((plan: Plan) => 
+            plan.product?.id === "prod_RuEdYVyOF1Vitg" || 
+            plan.product?.name === "PitchHub Plus"
+        );
+        
+        console.log("Filtered plans:", plans);
+        
+        // If no plans match the filter, use the first plan
+        if (plans.length === 0 && allPlans.length > 0) {
+            console.log("No matching plans found, using first available plan");
+            plans = [allPlans[0]];
+        }
+    }
     
     // Extract common features for the comparison table
-    const commonFeatures = plans ? extractCommonFeatures(plans as Plan[]) : [];
+    commonFeatures = extractCommonFeatures(plans);
+    
+    console.log("Final plans to display:", plans);
+    console.log("Common features:", commonFeatures);
 
     return (
         <>

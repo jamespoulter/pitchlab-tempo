@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.6.0?target=deno";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Initialize Stripe with the secret key
 const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
@@ -11,17 +10,12 @@ if (!stripeKey) {
 }
 
 // Fallback price ID to use if the provided price ID is invalid
-const FALLBACK_PRICE_ID = 'price_1R07PCI7Diy7LoDfEfcS7u3L';
+const FALLBACK_PRICE_ID = 'price_1R0QA2I7Diy7LoDft8J57jK3';
 
 const stripe = new Stripe(stripeKey, {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 });
-
-// Initialize Supabase client
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,32 +53,6 @@ serve(async (req) => {
       throw new Error('Missing return_url parameter');
     }
     
-    // Verify the user from the auth token if available
-    const authHeader = req.headers.get('Authorization');
-    let verifiedUserId = user_id;
-    
-    if (authHeader) {
-      try {
-        const token = authHeader.replace('Bearer ', '');
-        const { data: { user }, error } = await supabase.auth.getUser(token);
-        
-        if (error) {
-          console.error('Error verifying user:', error);
-        } else if (user) {
-          console.log('Verified user from token:', user.id);
-          // Use the verified user ID from the token
-          verifiedUserId = user.id;
-          
-          // Ensure the user ID in the request matches the verified user ID
-          if (user_id !== verifiedUserId) {
-            console.warn(`User ID mismatch: ${user_id} (request) vs ${verifiedUserId} (token)`);
-          }
-        }
-      } catch (authError) {
-        console.error('Error processing auth token:', authError);
-      }
-    }
-    
     // Validate the price ID - don't use 'price_default'
     let validatedPriceId = price_id;
     if (price_id === 'price_default') {
@@ -94,7 +62,7 @@ serve(async (req) => {
     
     console.log('Creating checkout session with parameters:', {
       price_id: validatedPriceId,
-      user_id: verifiedUserId,
+      user_id,
       return_url,
       trial_period_days,
       coupon_id,
@@ -114,7 +82,7 @@ serve(async (req) => {
       success_url: `${return_url}?session_id={CHECKOUT_SESSION_ID}&success=true`,
       cancel_url: `${return_url}?canceled=true`,
       metadata: {
-        user_id: verifiedUserId,
+        user_id: user_id,
       },
       // Enable automatic tax calculation if configured in Stripe
       automatic_tax: { enabled: true },
@@ -134,7 +102,7 @@ serve(async (req) => {
       sessionOptions.subscription_data = {
         trial_period_days: Number(trial_period_days),
         metadata: {
-          user_id: verifiedUserId,
+          user_id: user_id,
         },
       };
     }

@@ -2,7 +2,14 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@13.6.0?target=deno";
 
 // Initialize Stripe with the secret key
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
+const stripeKey = Deno.env.get('STRIPE_SECRET_KEY') || '';
+console.log("Stripe key available:", !!stripeKey);
+
+if (!stripeKey) {
+  console.error("STRIPE_SECRET_KEY environment variable is not set!");
+}
+
+const stripe = new Stripe(stripeKey, {
   apiVersion: '2023-10-16',
   httpClient: Stripe.createFetchHttpClient(),
 });
@@ -63,9 +70,8 @@ serve(async (req) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${return_url}?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${return_url}?session_id={CHECKOUT_SESSION_ID}&success=true`,
       cancel_url: `${return_url}?canceled=true`,
-      customer_email: req.headers.get('X-Customer-Email'),
       metadata: {
         user_id,
       },
@@ -75,11 +81,20 @@ serve(async (req) => {
       allow_promotion_codes: true,
     };
 
+    // Add customer email if available
+    const customerEmail = req.headers.get('X-Customer-Email');
+    if (customerEmail) {
+      sessionOptions.customer_email = customerEmail;
+    }
+
     // Add subscription trial period if specified
     if (trial_period_days && !isNaN(Number(trial_period_days))) {
       console.log(`Adding trial period of ${trial_period_days} days`);
       sessionOptions.subscription_data = {
         trial_period_days: Number(trial_period_days),
+        metadata: {
+          user_id,
+        },
       };
     }
 
