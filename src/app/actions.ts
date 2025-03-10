@@ -237,11 +237,25 @@ export const signOutAction = async () => {
 export const signInWithGoogleAction = async (redirectTo?: string) => {
   const supabase = await createClient();
   
-  // Get the origin - use the production URL if in production
+  // Get the origin - use the current request origin for more reliable local development
+  const requestOrigin = headers().get("origin");
   const isProd = process.env.NODE_ENV === 'production';
-  const origin = isProd 
-    ? 'https://www.pitchhub.agency' 
-    : headers().get("origin") || 'http://localhost:3000';
+  
+  // Determine the base URL for the redirect
+  let origin;
+  
+  if (isProd) {
+    // In production, always use the production URL
+    origin = 'https://www.pitchhub.agency';
+  } else {
+    // In development, use the request origin or fallback to localhost with the correct port
+    const portMatch = requestOrigin?.match(/:(\d+)/);
+    const port = portMatch ? portMatch[1] : '3000';
+    
+    origin = requestOrigin || `http://localhost:${port}`;
+    
+    console.log(`Using origin for Google OAuth: ${origin}`);
+  }
   
   // Get the URL parameters from the current request
   const url = new URL(headers().get("referer") || origin || "");
@@ -251,14 +265,19 @@ export const signInWithGoogleAction = async (redirectTo?: string) => {
   const finalRedirectTo = redirectTo || urlRedirectTo || '/dashboard';
   
   try {
+    // Following Supabase's recommended approach for PKCE flow with Server-Side Auth
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${origin}/auth/callback?redirect_to=${encodeURIComponent(finalRedirectTo)}`,
         queryParams: {
-          access_type: 'offline',
-          prompt: 'consent',
+          // These parameters are recommended by Google for security best practices
+          access_type: 'offline',  // Request a refresh token for long-term access
+          prompt: 'consent',       // Always show the consent screen
+          include_granted_scopes: 'true', // Include previously granted scopes
         },
+        // Scopes as recommended by Supabase for Google authentication
+        scopes: 'email profile',
       },
     });
 

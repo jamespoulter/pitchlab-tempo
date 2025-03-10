@@ -1,12 +1,63 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { createServerClient } from "@supabase/ssr";
+import { cookies } from "next/headers";
 import { AgencyProfile, AgencyProfileFormData, AgencyBranding, AgencyAsset, AgencyAssetFormData, AgencyCredential, AgencyCredentialFormData, CaseStudy, CaseStudyFormData, TeamMember, TeamMemberFormData, Service, ServiceFormData, Testimonial, TestimonialFormData } from "@/types/agency";
 
-// Create a Supabase client for browser-side operations
+/**
+ * Creates a Supabase client that works in both client and server contexts
+ * 
+ * Usage:
+ * - In client components: const supabase = createClient()
+ * - In server components: const supabase = await createClient()
+ * 
+ * The function automatically detects the context and returns the appropriate client.
+ */
 export const createClient = () => {
-  return createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  // Check if we're in a browser environment
+  if (typeof window !== 'undefined') {
+    // Client-side: use createClientComponentClient
+    return createClientComponentClient({
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    });
+  }
+  
+  // Server-side: use createServerClient with cookies
+  // This returns a thenable object that will resolve to the server client when awaited
+  return {
+    then: (resolve: Function) => {
+      const cookieStore = cookies();
+      const client = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              try {
+                return cookieStore.getAll().map(({ name, value }) => ({
+                  name,
+                  value,
+                }));
+              } catch (error) {
+                console.error("Error accessing cookies:", error);
+                return [];
+              }
+            },
+            setAll(cookiesToSet: any[]) {
+              try {
+                cookiesToSet.forEach(({ name, value, options }) => {
+                  cookieStore.set(name, value, options);
+                });
+              } catch (error) {
+                console.error("Error setting cookies:", error);
+              }
+            },
+          },
+        }
+      );
+      resolve(client);
+    }
+  };
 };
 
 /**

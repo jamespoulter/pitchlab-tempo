@@ -34,6 +34,9 @@ export default function StripeRedirectHandler() {
           if (!user) {
             setAlertType('error');
             setMessage('User authentication error. Please sign in again.');
+            setTimeout(() => {
+              router.push('/sign-in?redirect_to=/dashboard');
+            }, 3000);
             return;
           }
           
@@ -61,9 +64,11 @@ export default function StripeRedirectHandler() {
             setAlertType('success');
             setMessage('Your payment was successful! Your subscription is now active.');
             
-            // Clean up the URL by removing query parameters
-            const cleanUrl = window.location.pathname;
-            window.history.replaceState({}, document.title, cleanUrl);
+            // Clean up the URL by removing query parameters after a short delay
+            setTimeout(() => {
+              const cleanUrl = window.location.pathname;
+              window.history.replaceState({}, document.title, cleanUrl);
+            }, 1000);
           } else {
             // No active subscription found yet, might be processing
             setAlertType('loading');
@@ -83,9 +88,16 @@ export default function StripeRedirectHandler() {
         setMessage('Your payment was canceled. If you need help, please contact support.');
         setShowAlert(true);
         
-        // Clean up the URL by removing query parameters
-        const cleanUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, cleanUrl);
+        // Clean up the URL by removing query parameters after a short delay
+        setTimeout(() => {
+          const cleanUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, cleanUrl);
+          
+          // Redirect to pricing page after a short delay
+          setTimeout(() => {
+            router.push('/pricing?redirect_to=/dashboard');
+          }, 3000);
+        }, 1000);
       }
     };
 

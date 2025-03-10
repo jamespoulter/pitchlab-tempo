@@ -28,16 +28,31 @@ export async function middleware(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return req.cookies.getAll().map(({ name, value }) => ({
+        get(name) {
+          return req.cookies.get(name)?.value
+        },
+        set(name, value, options) {
+          req.cookies.set({
             name,
             value,
-          }))
+            ...options,
+          })
+          res.cookies.set({
+            name,
+            value,
+            ...options,
+          })
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            req.cookies.set(name, value)
-            res.cookies.set(name, value, options)
+        remove(name, options) {
+          req.cookies.set({
+            name,
+            value: '',
+            ...options,
+          })
+          res.cookies.set({
+            name,
+            value: '',
+            ...options,
           })
         },
       },
@@ -49,7 +64,7 @@ export async function middleware(req: NextRequest) {
 
   if (error) {
     // Auth session error handling without console.error
-    return NextResponse.redirect(new URL('/sign-in', req.url))
+    return NextResponse.redirect(new URL('/sign-in?redirect_to=' + encodeURIComponent(pathname), req.url))
   }
 
   // If no session, redirect to sign-in
@@ -89,7 +104,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   } catch (err) {
     // Error handling without console.error
-    return NextResponse.redirect(new URL('/pricing', req.url))
+    return NextResponse.redirect(new URL('/pricing?redirect_to=' + encodeURIComponent(pathname), req.url))
   }
 }
 
@@ -102,7 +117,7 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public (public files)
-     * - api/polar/webhook (webhook endpoints)
+     * - api/payments/webhook (webhook endpoints)
      */
     '/((?!_next/static|_next/image|favicon.ico|public|api/payments/webhook).*)',
   ],

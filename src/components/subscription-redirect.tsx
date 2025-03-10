@@ -46,7 +46,11 @@ export default function SubscriptionRedirect() {
           // Get the redirect_to parameter or default to dashboard
           const redirectTo = searchParams.get('redirect_to') || '/dashboard';
           console.log('User has active subscription, redirecting to:', redirectTo);
-          router.push(redirectTo);
+          
+          // Add a small delay to ensure the UI has time to update
+          setTimeout(() => {
+            router.push(redirectTo);
+          }, 500);
         }
       } catch (error) {
         console.error('Error checking subscription status:', error);
@@ -55,7 +59,12 @@ export default function SubscriptionRedirect() {
       }
     };
 
-    checkSubscriptionAndRedirect();
+    // Add a small delay to ensure auth state is fully loaded
+    const timer = setTimeout(() => {
+      checkSubscriptionAndRedirect();
+    }, 500);
+    
+    return () => clearTimeout(timer);
   }, [user, authLoading, pathname, router, searchParams]);
 
   // This component doesn't render anything

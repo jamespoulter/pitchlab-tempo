@@ -58,8 +58,13 @@ export default function DashboardButton({ className = '' }: { className?: string
     
     try {
       if (user) {
-        // If the user is logged in, navigate to the dashboard
-        router.push('/dashboard');
+        if (hasSubscription) {
+          // If the user is logged in and has a subscription, navigate to the dashboard
+          router.push('/dashboard');
+        } else {
+          // If the user is logged in but doesn't have a subscription, redirect to pricing
+          router.push('/pricing?redirect_to=/dashboard');
+        }
       } else {
         // If the user is not logged in, redirect to sign-in with a redirect_to parameter
         router.push('/sign-in?redirect_to=/dashboard');
@@ -74,10 +79,10 @@ export default function DashboardButton({ className = '' }: { className?: string
   return (
     <Button
       onClick={handleClick}
-      disabled={isLoading || authLoading}
+      disabled={isLoading || authLoading || isCheckingSubscription}
       className={className}
     >
-      {isLoading ? "Loading..." : "Dashboard"}
+      {isLoading || isCheckingSubscription ? "Loading..." : "Dashboard"}
     </Button>
   );
 } 
