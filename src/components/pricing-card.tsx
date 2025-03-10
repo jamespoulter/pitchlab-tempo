@@ -78,6 +78,10 @@ export default function PricingCard({
         setError(null);
 
         try {
+            console.log("Starting checkout process for price ID:", priceId);
+            console.log("Current user:", user);
+            console.log("Current URL:", window.location.href);
+            
             // Validate the price ID - don't use 'price_default'
             if (priceId === 'price_default') {
                 console.error("Invalid price ID: price_default");
@@ -99,28 +103,36 @@ export default function PricingCard({
             
             // Check if user is logged in
             if (!user) {
+                console.log("User not logged in, redirecting to sign-up");
                 // User is not logged in, redirect to signup with plan info
                 localStorage.setItem('selectedPlanId', priceId);
                 localStorage.setItem('trialPeriodDays', trialPeriodDays.toString());
                 
                 // Use the correct domain based on environment
                 const siteUrl = getSiteUrl();
+                console.log("Site URL for redirect:", siteUrl);
                 
                 // Check if we're already on the sign-up page with a plan parameter
                 const urlParams = new URLSearchParams(window.location.search);
                 const urlPlanId = urlParams.get('plan');
+                console.log("URL params:", Object.fromEntries(urlParams.entries()));
+                console.log("URL plan ID:", urlPlanId);
                 
                 // If we're already on the sign-up page with this plan, don't redirect again
                 if (window.location.pathname.includes('/sign-up') && urlPlanId === priceId) {
+                    console.log("Already on sign-up page with this plan, showing error message");
                     setError("Please complete the sign-up form above to continue.");
                     setIsLoading(false);
                     return;
                 }
                 
-                window.location.href = `${siteUrl}/sign-up?plan=${priceId}&trial=${trialPeriodDays}&redirect_to=/pricing`;
+                const redirectUrl = `${siteUrl}/sign-up?plan=${priceId}&trial=${trialPeriodDays}&redirect_to=/pricing`;
+                console.log("Redirecting to:", redirectUrl);
+                window.location.href = redirectUrl;
                 return;
             }
             
+            console.log("User is logged in, proceeding with checkout");
             // User is logged in, proceed with normal checkout
             const supabase = createClient();
             
@@ -134,6 +146,7 @@ export default function PricingCard({
             
             // Get the site URL based on environment
             const siteUrl = getSiteUrl();
+            console.log("Site URL for return URL:", siteUrl);
             
             // Create a simple checkout payload with only the required fields
             const checkoutPayload = {
@@ -151,9 +164,13 @@ export default function PricingCard({
             };
             
             if (session?.access_token) {
+                console.log("Including access token in request");
                 headers['Authorization'] = `Bearer ${session.access_token}`;
+            } else {
+                console.log("No access token available");
             }
             
+            console.log("Invoking create-checkout function with headers:", headers);
             const { data, error: checkoutError } = await supabase.functions.invoke('create-checkout', {
                 body: checkoutPayload,
                 headers
@@ -170,8 +187,10 @@ export default function PricingCard({
 
             // Redirect to Stripe checkout
             if (data?.url) {
+                console.log("Redirecting to Stripe checkout URL:", data.url);
                 window.location.href = data.url;
             } else {
+                console.error("No checkout URL returned");
                 setError('No checkout URL returned');
                 setIsLoading(false);
             }

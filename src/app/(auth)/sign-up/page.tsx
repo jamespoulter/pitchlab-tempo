@@ -23,6 +23,8 @@ export default async function Signup(props: {
   let planDetails = null;
   if (planId) {
     const supabase = await createClient();
+    console.log("Fetching plan details for plan ID:", planId);
+    
     const { data: planData, error } = await supabase.functions.invoke(
       "get-plans",
       {
@@ -32,8 +34,12 @@ export default async function Signup(props: {
       }
     );
     
+    console.log("Plan data response:", planData);
+    console.log("Plan data error:", error);
+    
     if (planData && Array.isArray(planData)) {
       planDetails = planData.find((plan: any) => plan.id === planId);
+      console.log("Found plan details:", planDetails);
     }
   }
   
@@ -63,14 +69,14 @@ export default async function Signup(props: {
           {planDetails && (
             <Card className="mb-6 bg-blue-50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xl">Selected Plan: {planDetails.product?.name || "PitchHub Plus"}</CardTitle>
+                <CardTitle className="text-xl">Selected Plan: {planDetails.product?.name || "PitchHub Premium"}</CardTitle>
                 <CardDescription className="text-lg font-semibold">
                   {formatAmount(planDetails.amount, planDetails.currency)}/{planDetails.interval || "month"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600 mb-2">
-                  {planDetails.product?.metadata?.description || "Full access to all PitchHub Plus features"}
+                  {planDetails.product?.metadata?.description || "Full access to all PitchHub Premium features"}
                 </p>
                 <div className="flex items-center text-sm text-blue-600">
                   <Check size={16} className="mr-1" />
