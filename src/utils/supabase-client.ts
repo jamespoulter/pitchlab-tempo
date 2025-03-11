@@ -1,69 +1,11 @@
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { createServerClient } from "@supabase/ssr";
+import { createBrowserClient } from "@supabase/ssr";
 import { AgencyProfile, AgencyProfileFormData, AgencyBranding, AgencyAsset, AgencyAssetFormData, AgencyCredential, AgencyCredentialFormData, CaseStudy, CaseStudyFormData, TeamMember, TeamMemberFormData, Service, ServiceFormData, Testimonial, TestimonialFormData } from "@/types/agency";
 
-/**
- * Creates a Supabase client that works in both client and server contexts
- * 
- * Usage:
- * - In client components: const supabase = createClient()
- * - In server components: const supabase = await createClient()
- * 
- * The function automatically detects the context and returns the appropriate client.
- */
+// Create a Supabase client for browser-side operations
 export const createClient = () => {
-  // Check if we're in a browser environment
-  if (typeof window !== 'undefined') {
-    // Client-side: use createClientComponentClient
-    return createClientComponentClient({
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    });
-  } else {
-    // Server-side: this should not be called directly from client components
-    // This is a fallback that will be removed in production builds if not used
-    console.warn('Server-side Supabase client should not be created in client components');
-    return null;
-  }
-};
-
-// Export a separate function for server components that can be tree-shaken
-export const getServerClient = async () => {
-  // This function should only be imported by server components
-  // Dynamic import to prevent client components from bundling server-only code
-  if (typeof window !== 'undefined') {
-    console.error('getServerClient should only be called from server components');
-    return null;
-  }
-  
-  // Dynamic import to prevent client components from bundling server-only code
-  const { cookies } = await import('next/headers');
-  const cookieStore = cookies();
-  
-  return createServerClient(
+  return createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        get(name) {
-          return cookieStore.get(name)?.value;
-        },
-        set(name, value, options) {
-          try {
-            cookieStore.set({ name, value, ...options });
-          } catch (error) {
-            // This can happen when cookies are manipulated by server actions
-          }
-        },
-        remove(name, options) {
-          try {
-            cookieStore.set({ name, value: "", ...options });
-          } catch (error) {
-            // This can happen when cookies are manipulated by server actions
-          }
-        },
-      },
-    }
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 };
 
@@ -611,26 +553,42 @@ export async function uploadAgencyAssetFile(file: File): Promise<{ success: bool
 // Agency Credentials Functions
 
 export async function getAgencyCredentials(): Promise<AgencyCredential[]> {
-  const supabase = createClient();
-  
   try {
-    const { data, error } = await supabase
-      .from('agency_credentials')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const supabase = createClient();
+    const user = await supabase.auth.getUser();
     
-    if (error) throw error;
+    if (!user.data.user) {
+      console.error("No authenticated user found");
+      return [];
+    }
+    
+    const { data, error } = await supabase
+      .from("agency_credentials")
+      .select("*")
+      .order("created_at", { ascending: false });
+    
+    if (error) {
+      console.error("Error fetching agency credentials:", error);
+      return [];
+    }
+    
     return data || [];
   } catch (error) {
-    console.error('Error fetching agency credentials:', error);
+    console.error("Error in getAgencyCredentials:", error);
     return [];
   }
 }
 
 export async function getAgencyCredentialById(credentialId: string): Promise<AgencyCredential | null> {
-  const supabase = createClient();
-  
   try {
+    const supabase = createClient();
+    const user = await supabase.auth.getUser();
+    
+    if (!user.data.user) {
+      console.error("No authenticated user found");
+      return null;
+    }
+    
     const { data, error } = await supabase
       .from("agency_credentials")
       .select("*")
@@ -650,124 +608,129 @@ export async function getAgencyCredentialById(credentialId: string): Promise<Age
 }
 
 export async function createAgencyCredential(credentialData: AgencyCredentialFormData): Promise<{ success: boolean; data?: AgencyCredential; error?: any }> {
-  const supabase = createClient();
-  
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const supabase = createClient();
+    const user = await supabase.auth.getUser();
     
-    if (!user) {
-      throw new Error('User not authenticated');
+    if (!user.data.user) {
+      console.error("No authenticated user found");
+      return { success: false, error: "No authenticated user found" };
     }
     
     const { data, error } = await supabase
-      .from('agency_credentials')
+      .from("agency_credentials")
       .insert({
         ...credentialData,
-        user_id: user.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        user_id: user.data.user.id,
       })
-      .select('*')
+      .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error("Error creating agency credential:", error);
+      return { success: false, error };
+    }
     
-    return {
-      success: true,
-      data
-    };
+    return { success: true, data };
   } catch (error) {
-    console.error('Error creating agency credential:', error);
-    return {
-      success: false,
-      error
-    };
+    console.error("Error in createAgencyCredential:", error);
+    return { success: false, error };
   }
 }
 
 export async function updateAgencyCredential(credentialId: string, credentialData: Partial<AgencyCredentialFormData>): Promise<{ success: boolean; data?: AgencyCredential; error?: any }> {
-  const supabase = createClient();
-  
   try {
+    const supabase = createClient();
+    const user = await supabase.auth.getUser();
+    
+    if (!user.data.user) {
+      console.error("No authenticated user found");
+      return { success: false, error: "No authenticated user found" };
+    }
+    
     const { data, error } = await supabase
-      .from('agency_credentials')
-      .update({
-        ...credentialData,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', credentialId)
-      .select('*')
+      .from("agency_credentials")
+      .update(credentialData)
+      .eq("id", credentialId)
+      .select()
       .single();
     
-    if (error) throw error;
+    if (error) {
+      console.error("Error updating agency credential:", error);
+      return { success: false, error };
+    }
     
-    return {
-      success: true,
-      data
-    };
+    return { success: true, data };
   } catch (error) {
-    console.error('Error updating agency credential:', error);
-    return {
-      success: false,
-      error
-    };
+    console.error("Error in updateAgencyCredential:", error);
+    return { success: false, error };
   }
 }
 
 export async function deleteAgencyCredential(credentialId: string): Promise<{ success: boolean; error?: any }> {
-  const supabase = createClient();
-  
   try {
+    const supabase = createClient();
+    const user = await supabase.auth.getUser();
+    
+    if (!user.data.user) {
+      console.error("No authenticated user found");
+      return { success: false, error: "No authenticated user found" };
+    }
+    
     const { error } = await supabase
-      .from('agency_credentials')
+      .from("agency_credentials")
       .delete()
-      .eq('id', credentialId);
+      .eq("id", credentialId);
     
-    if (error) throw error;
+    if (error) {
+      console.error("Error deleting agency credential:", error);
+      return { success: false, error };
+    }
     
-    return {
-      success: true
-    };
+    return { success: true };
   } catch (error) {
-    console.error('Error deleting agency credential:', error);
-    return {
-      success: false,
-      error
-    };
+    console.error("Error in deleteAgencyCredential:", error);
+    return { success: false, error };
   }
 }
 
 export async function uploadCredentialImage(file: File): Promise<{ success: boolean; url?: string; error?: any }> {
-  const supabase = createClient();
-  
   try {
-    // Create a unique file name
+    const supabase = createClient();
+    const user = await supabase.auth.getUser();
+    
+    if (!user.data.user) {
+      console.error("No authenticated user found");
+      return { success: false, error: "No authenticated user found" };
+    }
+    
+    // Create a unique file path
     const fileExt = file.name.split('.').pop();
     const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-    const filePath = `credential_images/${fileName}`;
+    const filePath = `${user.data.user.id}/credentials/${fileName}`;
     
     // Upload the file
-    const { error: uploadError } = await supabase.storage
-      .from('agency-credentials')
-      .upload(filePath, file);
+    const { data, error } = await supabase.storage
+      .from('agency-assets')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
     
-    if (uploadError) throw uploadError;
+    if (error) {
+      console.error("Error uploading credential image:", error);
+      return { success: false, error };
+    }
     
     // Get the public URL
     const { data: { publicUrl } } = supabase.storage
-      .from('agency-credentials')
+      .from('agency-assets')
       .getPublicUrl(filePath);
     
-    return {
-      success: true,
-      url: publicUrl
-    };
+    return { success: true, url: publicUrl };
   } catch (error) {
-    console.error('Error uploading credential image:', error);
-    return {
-      success: false,
-      error
-    };
+    console.error("Error in uploadCredentialImage:", error);
+    return { success: false, error };
   }
 }
 
@@ -1240,18 +1203,7 @@ export async function getServices(): Promise<Service[]> {
     return [];
   }
   
-  if (!data) return [];
-  
-  // Map database column names to frontend camelCase
-  return data.map(service => {
-    if (service.pricerange) {
-      return {
-        ...service,
-        priceRange: service.pricerange
-      };
-    }
-    return service;
-  }) as Service[];
+  return data || [];
 }
 
 /**
@@ -1281,17 +1233,7 @@ export async function getServiceById(serviceId: string): Promise<Service | null>
     return null;
   }
   
-  if (!data) return null;
-  
-  // Map database column names to frontend camelCase
-  if (data.pricerange) {
-    return {
-      ...data,
-      priceRange: data.pricerange
-    } as Service;
-  }
-  
-  return data as Service;
+  return data;
 }
 
 /**
@@ -1300,61 +1242,33 @@ export async function getServiceById(serviceId: string): Promise<Service | null>
 export async function createService(serviceData: ServiceFormData): Promise<{ success: boolean; data?: Service; error?: any }> {
   const supabase = createClient();
   
-  console.log("Creating service with data:", JSON.stringify(serviceData, null, 2));
+  // Get the current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
   
-  try {
-    // Get the current user
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    
-    if (userError || !user) {
-      console.error("Error fetching user:", userError);
-      return { success: false, error: userError };
-    }
-    
-    console.log("User authenticated:", user.id);
-    
-    // Map frontend camelCase to database lowercase column names
-    const formattedData = {
-      name: serviceData.name,
-      description: serviceData.description,
-      features: Array.isArray(serviceData.features) ? serviceData.features : [],
-      pricerange: serviceData.priceRange, // Match the actual database column name
-      timeline: serviceData.timeline,
-      category: serviceData.category,
-      icon: serviceData.icon,
-      deliverables: Array.isArray(serviceData.deliverables) ? serviceData.deliverables : [],
-      process: Array.isArray(serviceData.process) ? serviceData.process : [],
-      faq: Array.isArray(serviceData.faq) ? serviceData.faq : [],
-      testimonials: Array.isArray(serviceData.testimonials) ? serviceData.testimonials : [],
-      user_id: user.id
-    };
-    
-    console.log("Prepared data for insert:", JSON.stringify(formattedData, null, 2));
-    
-    // Create the service
-    const { data: newService, error } = await supabase
-      .from("services")
-      .insert(formattedData)
-      .select()
-      .single();
-    
-    if (error) {
-      console.error("Error creating service:", error);
-      return { success: false, error };
-    }
-    
-    console.log("Service created successfully:", newService);
-    
-    // Map database column names back to frontend camelCase
-    if (newService && newService.pricerange) {
-      (newService as any).priceRange = newService.pricerange;
-    }
-    
-    return { success: true, data: newService as Service };
-  } catch (error) {
-    console.error("Unexpected error in createService:", error);
+  if (userError || !user) {
+    console.error("Error fetching user:", userError);
+    return { success: false, error: userError };
+  }
+  
+  // Prepare the data with the user_id
+  const data = {
+    ...serviceData,
+    user_id: user.id,
+  };
+  
+  // Create the service
+  const { data: newService, error } = await supabase
+    .from("services")
+    .insert(data)
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Error creating service:", error);
     return { success: false, error };
   }
+  
+  return { success: true, data: newService };
 }
 
 /**
@@ -1371,28 +1285,12 @@ export async function updateService(serviceId: string, serviceData: Partial<Serv
     return { success: false, error: userError };
   }
   
-  // Map frontend camelCase to database lowercase column names
-  const formattedData: Record<string, any> = {};
-  
-  // Map each property with the correct case
-  if (serviceData.name !== undefined) formattedData.name = serviceData.name;
-  if (serviceData.description !== undefined) formattedData.description = serviceData.description;
-  if (serviceData.features !== undefined) formattedData.features = serviceData.features;
-  if (serviceData.priceRange !== undefined) formattedData.pricerange = serviceData.priceRange;
-  if (serviceData.timeline !== undefined) formattedData.timeline = serviceData.timeline;
-  if (serviceData.category !== undefined) formattedData.category = serviceData.category;
-  if (serviceData.icon !== undefined) formattedData.icon = serviceData.icon;
-  if (serviceData.deliverables !== undefined) formattedData.deliverables = serviceData.deliverables;
-  if (serviceData.process !== undefined) formattedData.process = serviceData.process;
-  if (serviceData.faq !== undefined) formattedData.faq = serviceData.faq;
-  if (serviceData.testimonials !== undefined) formattedData.testimonials = serviceData.testimonials;
-  
   // Update the service
-  const { data: updatedService, error } = await supabase
+  const { data, error } = await supabase
     .from("services")
-    .update(formattedData)
+    .update(serviceData)
     .eq("id", serviceId)
-    .eq("user_id", user.id) // Ensure the user can only update their own services
+    .eq("user_id", user.id)
     .select()
     .single();
   
@@ -1401,12 +1299,7 @@ export async function updateService(serviceId: string, serviceData: Partial<Serv
     return { success: false, error };
   }
   
-  // Map database column names back to frontend camelCase
-  if (updatedService && updatedService.pricerange) {
-    (updatedService as any).priceRange = updatedService.pricerange;
-  }
-  
-  return { success: true, data: updatedService as Service };
+  return { success: true, data };
 }
 
 /**
@@ -1438,192 +1331,130 @@ export async function deleteService(serviceId: string): Promise<{ success: boole
   return { success: true };
 }
 
-/**
- * Fetches all testimonials for the current authenticated user
- */
-export async function getTestimonials(): Promise<Testimonial[]> {
-  const supabase = createClient();
-  
-  // Get the current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !user) {
-    console.error("Error fetching user:", userError);
-    return [];
-  }
-  
-  // Get all testimonials for the user
+// Testimonial Functions
+export async function getTestimonials(userId: string) {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   const { data, error } = await supabase
-    .from("testimonials")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("display_order", { ascending: true })
-    .order("created_at", { ascending: false });
-  
+    .from('testimonials')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
+
   if (error) {
-    console.error("Error fetching testimonials:", error);
-    return [];
+    console.error('Error fetching testimonials:', error);
+    throw error;
   }
-  
-  return data || [];
+
+  return data as Testimonial[];
 }
 
-/**
- * Fetches a specific testimonial by ID for the current authenticated user
- */
-export async function getTestimonialById(testimonialId: string): Promise<Testimonial | null> {
-  const supabase = createClient();
-  
-  // Get the current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !user) {
-    console.error("Error fetching user:", userError);
-    return null;
-  }
-  
-  // Get the testimonial
+export async function getTestimonialById(id: string) {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   const { data, error } = await supabase
-    .from("testimonials")
-    .select("*")
-    .eq("id", testimonialId)
-    .eq("user_id", user.id)
+    .from('testimonials')
+    .select('*')
+    .eq('id', id)
     .single();
-  
+
   if (error) {
-    console.error("Error fetching testimonial:", error);
-    return null;
+    console.error('Error fetching testimonial:', error);
+    throw error;
   }
-  
-  return data;
+
+  return data as Testimonial;
 }
 
-/**
- * Creates a new testimonial for the current authenticated user
- */
-export async function createTestimonial(testimonialData: TestimonialFormData): Promise<{ success: boolean; data?: Testimonial; error?: any }> {
-  const supabase = createClient();
-  
-  // Get the current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !user) {
-    console.error("Error fetching user:", userError);
-    return { success: false, error: userError };
-  }
-  
-  // Prepare the data with the user_id
-  const data = {
-    ...testimonialData,
-    user_id: user.id,
-  };
-  
-  // Create the testimonial
-  const { data: newTestimonial, error } = await supabase
-    .from("testimonials")
-    .insert(data)
-    .select()
-    .single();
-  
-  if (error) {
-    console.error("Error creating testimonial:", error);
-    return { success: false, error };
-  }
-  
-  return { success: true, data: newTestimonial };
-}
+export async function createTestimonial(userId: string, testimonial: TestimonialFormData) {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
-/**
- * Updates a testimonial for the current authenticated user
- */
-export async function updateTestimonial(testimonialId: string, testimonialData: Partial<TestimonialFormData>): Promise<{ success: boolean; data?: Testimonial; error?: any }> {
-  const supabase = createClient();
-  
-  // Get the current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !user) {
-    console.error("Error fetching user:", userError);
-    return { success: false, error: userError };
-  }
-  
-  // Update the testimonial
   const { data, error } = await supabase
-    .from("testimonials")
-    .update(testimonialData)
-    .eq("id", testimonialId)
-    .eq("user_id", user.id)
-    .select()
-    .single();
-  
+    .from('testimonials')
+    .insert([
+      {
+        user_id: userId,
+        client_name: testimonial.client_name,
+        client_position: testimonial.client_position,
+        client_company: testimonial.client_company,
+        content: testimonial.content,
+        rating: testimonial.rating,
+        image_url: testimonial.image_url,
+        date: testimonial.date,
+        project_type: testimonial.project_type,
+        featured: testimonial.featured,
+        contact_info: testimonial.contact_info,
+        project_details: testimonial.project_details,
+        related_case_studies: testimonial.related_case_studies
+      }
+    ])
+    .select();
+
   if (error) {
-    console.error("Error updating testimonial:", error);
-    return { success: false, error };
+    console.error('Error creating testimonial:', error);
+    throw error;
   }
-  
-  return { success: true, data };
+
+  return data[0] as Testimonial;
 }
 
-/**
- * Deletes a testimonial for the current authenticated user
- */
-export async function deleteTestimonial(testimonialId: string): Promise<{ success: boolean; error?: any }> {
-  const supabase = createClient();
-  
-  // Get the current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !user) {
-    console.error("Error fetching user:", userError);
-    return { success: false, error: userError };
+export async function updateTestimonial(id: string, testimonial: TestimonialFormData) {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
+  const { data, error } = await supabase
+    .from('testimonials')
+    .update({
+      client_name: testimonial.client_name,
+      client_position: testimonial.client_position,
+      client_company: testimonial.client_company,
+      content: testimonial.content,
+      rating: testimonial.rating,
+      image_url: testimonial.image_url,
+      date: testimonial.date,
+      project_type: testimonial.project_type,
+      featured: testimonial.featured,
+      contact_info: testimonial.contact_info,
+      project_details: testimonial.project_details,
+      related_case_studies: testimonial.related_case_studies
+    })
+    .eq('id', id)
+    .select();
+
+  if (error) {
+    console.error('Error updating testimonial:', error);
+    throw error;
   }
-  
-  // Delete the testimonial
+
+  return data[0] as Testimonial;
+}
+
+export async function deleteTestimonial(id: string) {
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+
   const { error } = await supabase
-    .from("testimonials")
+    .from('testimonials')
     .delete()
-    .eq("id", testimonialId)
-    .eq("user_id", user.id);
-  
-  if (error) {
-    console.error("Error deleting testimonial:", error);
-    return { success: false, error };
-  }
-  
-  return { success: true };
-}
+    .eq('id', id);
 
-/**
- * Uploads a client image for a testimonial
- */
-export async function uploadTestimonialClientImage(file: File): Promise<{ success: boolean; url?: string; error?: any }> {
-  const supabase = createClient();
-  
-  // Get the current user
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
-  if (userError || !user) {
-    console.error("Error fetching user:", userError);
-    return { success: false, error: userError };
-  }
-  
-  // Upload the file to Supabase Storage
-  const { data, error } = await supabase.storage
-    .from("testimonial-images")
-    .upload(`${user.id}/${Date.now()}-${file.name}`, file, {
-      cacheControl: "3600",
-      upsert: true,
-    });
-  
   if (error) {
-    console.error("Error uploading testimonial client image:", error);
-    return { success: false, error };
+    console.error('Error deleting testimonial:', error);
+    throw error;
   }
-  
-  // Get the public URL
-  const { data: { publicUrl } } = supabase.storage
-    .from("testimonial-images")
-    .getPublicUrl(data.path);
-  
-  return { success: true, url: publicUrl };
+
+  return true;
 } 

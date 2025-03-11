@@ -139,8 +139,8 @@ export default function DashboardNavbar() {
   };
 
   return (
-    <nav className="w-full border-b border-gray-200 bg-white py-2">
-      <div className="container mx-auto px-4 flex justify-between items-center">
+    <nav className="w-full border-b border-gray-200 bg-white py-3">
+      <div className="px-4 flex justify-between items-center">
         <div className="flex items-center gap-4">
           <div className="relative w-64 max-w-md">
             <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -250,21 +250,26 @@ export default function DashboardNavbar() {
                   </Link>
                 </DropdownMenuItem>
               )}
+              <DropdownMenuSeparator />
               <DropdownMenuItem>
-                <Link href="/dashboard/settings" className="w-full flex items-center gap-2">
-                  <Home className="h-4 w-4 text-gray-500" />
-                  <span>Account Settings</span>
+                <Link href="/dashboard/settings" className="w-full">
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem>
+                <Link href="/" className="w-full">
+                  Back to Home
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                className="text-red-600"
-                onSelect={async () => {
+                onClick={async () => {
                   await supabase.auth.signOut();
                   router.push("/");
                 }}
+                className="text-red-600 focus:text-red-600"
               >
-                Sign Out
+                Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

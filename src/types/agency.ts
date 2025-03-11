@@ -257,7 +257,6 @@ export interface Service {
   description: string;
   features: string[];
   priceRange: string;
-  pricerange?: string;
   timeline: string;
   category: string;
   icon: string;
@@ -308,20 +307,14 @@ export interface Testimonial {
   id?: string;
   user_id?: string;
   client_name: string;
-  client_company?: string;
-  client_role?: string;
   client_position?: string;
-  client_image_url?: string;
-  image_url?: string;
+  client_company?: string;
   content: string;
   rating?: number;
-  project_name?: string;
-  project_date?: string;
-  project_type?: string;
+  image_url?: string;
   date?: string;
-  is_featured?: boolean;
+  project_type?: string;
   featured?: boolean;
-  display_order?: number;
   contact_info?: {
     email?: string;
     phone?: string;
@@ -339,20 +332,14 @@ export interface Testimonial {
 
 export interface TestimonialFormData {
   client_name: string;
-  client_company?: string;
-  client_role?: string;
   client_position?: string;
-  client_image_url?: string;
-  image_url?: string;
+  client_company?: string;
   content: string;
   rating?: number;
-  project_name?: string;
-  project_date?: string;
-  project_type?: string;
+  image_url?: string;
   date?: string;
-  is_featured?: boolean;
+  project_type?: string;
   featured?: boolean;
-  display_order?: number;
   contact_info?: {
     email?: string;
     phone?: string;
