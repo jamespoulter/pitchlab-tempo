@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-import { createBrowserClient } from "@supabase/ssr";
-=======
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { createServerClient } from "@supabase/ssr";
->>>>>>> b2150d5db3731a5110528e5d61736cb74f443aaa
 import { AgencyProfile, AgencyProfileFormData, AgencyBranding, AgencyAsset, AgencyAssetFormData, AgencyCredential, AgencyCredentialFormData, CaseStudy, CaseStudyFormData, TeamMember, TeamMemberFormData, Service, ServiceFormData, Testimonial, TestimonialFormData } from "@/types/agency";
 
 /**
@@ -1442,134 +1438,6 @@ export async function deleteService(serviceId: string): Promise<{ success: boole
   return { success: true };
 }
 
-<<<<<<< HEAD
-// Testimonial Functions
-export async function getTestimonials(userId: string) {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const { data, error } = await supabase
-    .from('testimonials')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-
-  if (error) {
-    console.error('Error fetching testimonials:', error);
-    throw error;
-  }
-
-  return data as Testimonial[];
-}
-
-export async function getTestimonialById(id: string) {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const { data, error } = await supabase
-    .from('testimonials')
-    .select('*')
-    .eq('id', id)
-    .single();
-
-  if (error) {
-    console.error('Error fetching testimonial:', error);
-    throw error;
-  }
-
-  return data as Testimonial;
-}
-
-export async function createTestimonial(userId: string, testimonial: TestimonialFormData) {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const { data, error } = await supabase
-    .from('testimonials')
-    .insert([
-      {
-        user_id: userId,
-        client_name: testimonial.client_name,
-        client_position: testimonial.client_position,
-        client_company: testimonial.client_company,
-        content: testimonial.content,
-        rating: testimonial.rating,
-        image_url: testimonial.image_url,
-        date: testimonial.date,
-        project_type: testimonial.project_type,
-        featured: testimonial.featured,
-        contact_info: testimonial.contact_info,
-        project_details: testimonial.project_details,
-        related_case_studies: testimonial.related_case_studies
-      }
-    ])
-    .select();
-
-  if (error) {
-    console.error('Error creating testimonial:', error);
-    throw error;
-  }
-
-  return data[0] as Testimonial;
-}
-
-export async function updateTestimonial(id: string, testimonial: TestimonialFormData) {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const { data, error } = await supabase
-    .from('testimonials')
-    .update({
-      client_name: testimonial.client_name,
-      client_position: testimonial.client_position,
-      client_company: testimonial.client_company,
-      content: testimonial.content,
-      rating: testimonial.rating,
-      image_url: testimonial.image_url,
-      date: testimonial.date,
-      project_type: testimonial.project_type,
-      featured: testimonial.featured,
-      contact_info: testimonial.contact_info,
-      project_details: testimonial.project_details,
-      related_case_studies: testimonial.related_case_studies
-    })
-    .eq('id', id)
-    .select();
-
-  if (error) {
-    console.error('Error updating testimonial:', error);
-    throw error;
-  }
-
-  return data[0] as Testimonial;
-}
-
-export async function deleteTestimonial(id: string) {
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-
-  const { error } = await supabase
-    .from('testimonials')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    console.error('Error deleting testimonial:', error);
-    throw error;
-  }
-
-  return true;
-=======
 /**
  * Fetches all testimonials for the current authenticated user
  */
@@ -1758,5 +1626,4 @@ export async function uploadTestimonialClientImage(file: File): Promise<{ succes
     .getPublicUrl(data.path);
   
   return { success: true, url: publicUrl };
->>>>>>> b2150d5db3731a5110528e5d61736cb74f443aaa
 } 

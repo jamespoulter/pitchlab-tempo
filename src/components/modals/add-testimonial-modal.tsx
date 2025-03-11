@@ -5,49 +5,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-<<<<<<< HEAD
-import { Star, X } from "lucide-react";
-import { TestimonialFormData } from "@/types/agency";
-import { createTestimonial } from "@/utils/supabase-client";
-=======
 import { Star, X, Upload, Loader2 } from "lucide-react";
 import { TestimonialFormData } from "@/types/agency";
 import { uploadTestimonialClientImage } from "@/utils/supabase-client";
->>>>>>> b2150d5db3731a5110528e5d61736cb74f443aaa
 import { toast } from "sonner";
 
 interface AddTestimonialModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-<<<<<<< HEAD
-  onSave?: (testimonial: any) => void;
-  userId?: string | null;
-=======
   onSave?: (testimonial: TestimonialFormData) => void;
->>>>>>> b2150d5db3731a5110528e5d61736cb74f443aaa
 }
 
 export function AddTestimonialModal({
   open,
   onOpenChange,
   onSave,
-  userId,
 }: AddTestimonialModalProps) {
   const [clientName, setClientName] = useState("");
-<<<<<<< HEAD
-  const [clientTitle, setClientTitle] = useState("");
-  const [companyName, setCompanyName] = useState("");
-  const [quote, setQuote] = useState("");
-  const [rating, setRating] = useState(5);
-  const [projectType, setProjectType] = useState("");
-  const [avatar, setAvatar] = useState("");
-  const [featured, setFeatured] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSave = async () => {
-    if (!userId) {
-      toast.error("You must be logged in to add a testimonial");
-=======
   const [clientRole, setClientRole] = useState("");
   const [clientCompany, setClientCompany] = useState("");
   const [content, setContent] = useState("");
@@ -88,42 +62,9 @@ export function AddTestimonialModal({
   const handleSave = async () => {
     if (!clientName || !content) {
       toast.error("Client name and testimonial content are required");
->>>>>>> b2150d5db3731a5110528e5d61736cb74f443aaa
       return;
     }
 
-    setIsLoading(true);
-    
-<<<<<<< HEAD
-    try {
-      const date = new Date().toISOString().split("T")[0];
-      
-      const testimonialData: TestimonialFormData = {
-        client_name: clientName,
-        client_position: clientTitle,
-        client_company: companyName,
-        content: quote,
-        rating,
-        date,
-        project_type: projectType,
-        image_url: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${clientName}`,
-        featured,
-        contact_info: {
-          email: "",
-          phone: "",
-        },
-        project_details: {
-          services: [],
-          results: [],
-        },
-        related_case_studies: [],
-      };
-      
-      const newTestimonial = await createTestimonial(userId, testimonialData);
-      
-      if (onSave) {
-        onSave(newTestimonial);
-=======
     setIsSubmitting(true);
     
     try {
@@ -142,22 +83,10 @@ export function AddTestimonialModal({
       
       if (onSave) {
         await onSave(newTestimonial);
->>>>>>> b2150d5db3731a5110528e5d61736cb74f443aaa
       }
       
       // Reset form
       setClientName("");
-<<<<<<< HEAD
-      setClientTitle("");
-      setCompanyName("");
-      setQuote("");
-      setRating(5);
-      setProjectType("");
-      setAvatar("");
-      setFeatured(false);
-      
-      toast.success("Testimonial added successfully");
-=======
       setClientRole("");
       setClientCompany("");
       setContent("");
@@ -166,23 +95,15 @@ export function AddTestimonialModal({
       setProjectDate("");
       setClientImageUrl("");
       setIsFeatured(false);
->>>>>>> b2150d5db3731a5110528e5d61736cb74f443aaa
       
       if (onOpenChange) {
         onOpenChange(false);
       }
     } catch (error) {
-<<<<<<< HEAD
-      console.error("Error adding testimonial:", error);
-      toast.error("Failed to add testimonial");
-    } finally {
-      setIsLoading(false);
-=======
       console.error("Error saving testimonial:", error);
       toast.error("An error occurred while saving the testimonial");
     } finally {
       setIsSubmitting(false);
->>>>>>> b2150d5db3731a5110528e5d61736cb74f443aaa
     }
   };
 
@@ -362,14 +283,6 @@ export function AddTestimonialModal({
           <Button
             variant="outline"
             onClick={() => onOpenChange && onOpenChange(false)}
-<<<<<<< HEAD
-            disabled={isLoading}
-          >
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isLoading}>
-            {isLoading ? "Saving..." : "Save Testimonial"}
-=======
             disabled={isSubmitting || isUploading}
           >
             Cancel
@@ -386,7 +299,6 @@ export function AddTestimonialModal({
             ) : (
               "Save Testimonial"
             )}
->>>>>>> b2150d5db3731a5110528e5d61736cb74f443aaa
           </Button>
         </div>
       </div>
