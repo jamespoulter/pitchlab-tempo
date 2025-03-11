@@ -106,7 +106,7 @@ export default function TeamPage() {
   };
 
   // Filter team members based on search query
-  const filteredTeamMembers = teamMembers.filter((member) => {
+  const filteredTeamMembers = teamMembers?.filter((member) => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -115,7 +115,7 @@ export default function TeamPage() {
       member.email.toLowerCase().includes(query) ||
       member.skills.some((skill) => skill.toLowerCase().includes(query))
     );
-  });
+  }) || [];
 
   // Sort team members based on sort order
   const sortedTeamMembers = [...filteredTeamMembers].sort((a, b) => {

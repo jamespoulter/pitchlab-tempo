@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,231 +22,236 @@ import {
   Briefcase,
   Share,
   Copy,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { Testimonial } from "@/types/agency";
+import { getTestimonialById } from "@/utils/supabase-client";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function TestimonialDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  // This would normally fetch real data from the database based on the ID
-  const testimonial = {
-    id: params.id,
-    clientName: "John Smith",
-    clientTitle: "CEO",
-    companyName: "Acme Inc.",
-    quote:
-      "Working with this agency transformed our brand identity and online presence. Their strategic approach and creative solutions exceeded our expectations and delivered measurable results. The team was responsive, professional, and truly understood our business goals. We saw a 45% increase in qualified leads within the first three months of implementing their recommendations. I would highly recommend them to any business looking to elevate their digital marketing strategy.",
-    rating: 5,
-    date: "2023-08-15",
-    projectType: "Website Redesign & Digital Marketing",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-    featured: true,
-    contactInfo: {
-      email: "john@acmeinc.com",
-      phone: "+1 (555) 123-4567",
-    },
-    projectDetails: {
-      startDate: "2023-01-10",
-      endDate: "2023-06-30",
-      services: [
-        "Website Redesign",
-        "SEO Optimization",
-        "Content Strategy",
-        "PPC Campaign",
-      ],
-      results: [
-        "45% increase in qualified leads",
-        "28% improvement in conversion rate",
-        "65% increase in organic traffic",
-      ],
-    },
-    relatedCaseStudies: [
-      "Acme Inc. Website Redesign",
-      "Acme Inc. Digital Marketing Campaign",
-    ],
-  };
+  const router = useRouter();
+  const [testimonial, setTestimonial] = useState<Testimonial | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Generate stars based on rating
-  const stars = Array(5)
-    .fill(0)
-    .map((_, i) => (
-      <Star
-        key={i}
-        className={`h-5 w-5 ${i < testimonial.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}`}
-      />
-    ));
+  useEffect(() => {
+    const fetchTestimonial = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getTestimonialById(params.id);
+        setTestimonial(data);
+      } catch (error) {
+        console.error("Error fetching testimonial:", error);
+        toast.error("Failed to load testimonial");
+        router.push("/dashboard/testimonials");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchTestimonial();
+  }, [params.id, router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!testimonial) {
+    return (
+      <div className="text-center py-12">
+        <h3 className="text-lg font-medium mb-2">Testimonial not found</h3>
+        <p className="text-muted-foreground mb-4">
+          The testimonial you're looking for doesn't exist or has been deleted.
+        </p>
+        <Button asChild>
+          <Link href="/dashboard/testimonials">Back to Testimonials</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Link href="/dashboard/testimonials">
-          <Button variant="ghost" size="sm" className="gap-1">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to Testimonials</span>
-          </Button>
-        </Link>
+      <div className="flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <Link href="/dashboard/testimonials">
+              <Button variant="ghost" size="sm" className="gap-1">
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Testimonials</span>
+              </Button>
+            </Link>
+          </div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Testimonial Details
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {testimonial.client_company} • {testimonial.project_type}
+          </p>
+        </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1">
-            <Edit className="h-4 w-4" />
-            <span>Edit</span>
+          <Button variant="outline" className="gap-1">
+            <Share className="h-4 w-4" />
+            <span>Share</span>
           </Button>
-          <Button size="sm" className="gap-1">
-            <FileText className="h-4 w-4" />
-            <span>Add to Proposal</span>
+          <Button asChild className="gap-1">
+            <Link href={`/dashboard/testimonials/${testimonial.id}/edit`}>
+              <Edit className="h-4 w-4" />
+              <span>Edit</span>
+            </Link>
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-2xl">Client Testimonial</CardTitle>
-                  <CardDescription className="mt-2">
-                    <div className="flex items-center gap-2">
-                      <Building className="h-4 w-4" />
-                      <span>
-                        {testimonial.companyName} • {testimonial.projectType}
-                      </span>
-                    </div>
-                  </CardDescription>
-                </div>
-                {testimonial.featured && (
-                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full">
-                    Featured
-                  </span>
-                )}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-2xl">Client Testimonial</CardTitle>
+            <CardDescription>
+              Detailed view of the client testimonial and feedback
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {testimonial.featured && (
+              <div className="inline-block bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-md">
+                Featured Testimonial
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="bg-blue-50 border border-blue-100 rounded-lg p-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-12 h-12 rounded-full overflow-hidden">
-                    <img
-                      src={testimonial.avatar}
-                      alt={testimonial.clientName}
-                      className="w-full h-full object-cover"
-                    />
+            )}
+            <div className="flex items-start gap-4">
+              <div className="w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
+                <img
+                  src={testimonial.image_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${testimonial.client_name}`}
+                  alt={testimonial.client_name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div>
+                <h3 className="font-semibold">{testimonial.client_name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {testimonial.client_position}, {testimonial.client_company}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex">
+                    {[...Array(5)].map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`h-4 w-4 ${
+                          i < (testimonial.rating || 0)
+                            ? "text-yellow-400 fill-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    ))}
                   </div>
-                  <div>
-                    <h3 className="font-semibold">{testimonial.clientName}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {testimonial.clientTitle}, {testimonial.companyName}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center mb-4">
-                  {stars}
-                  <span className="ml-2 text-sm text-muted-foreground">
+                  <span className="text-sm font-medium">
                     {testimonial.rating}/5
                   </span>
                 </div>
-                <p className="italic text-gray-700 text-lg mb-3">
-                  "{testimonial.quote}"
-                </p>
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4 mr-1" />
-                  {new Date(testimonial.date).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </div>
               </div>
+            </div>
 
-              <div className="pt-4 border-t">
-                <h3 className="text-lg font-semibold mb-4">Project Results</h3>
-                <div className="space-y-3">
-                  {testimonial.projectDetails.results.map((result, index) => (
-                    <div
-                      key={index}
-                      className="flex items-start gap-2 bg-green-50 border border-green-100 rounded-md p-3"
-                    >
-                      <Star className="h-5 w-5 text-green-500 mt-0.5" />
-                      <span>{result}</span>
-                    </div>
+            <blockquote className="border-l-4 border-gray-200 pl-4 italic">
+              "{testimonial.content}"
+            </blockquote>
+
+            {testimonial.date && (
+              <div className="text-sm text-muted-foreground">
+                Testimonial received on{" "}
+                {new Date(testimonial.date).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </div>
+            )}
+
+            {testimonial.project_details?.results && testimonial.project_details.results.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-2">Project Results</h4>
+                <ul className="list-disc list-inside space-y-1 text-sm">
+                  {testimonial.project_details.results.map((result, index) => (
+                    <li key={index}>{result}</li>
                   ))}
-                </div>
+                </ul>
               </div>
+            )}
+          </CardContent>
+        </Card>
 
-              <div className="pt-4 border-t">
-                <h3 className="text-lg font-semibold mb-4">
-                  Services Provided
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {testimonial.projectDetails.services.map((service, index) => (
-                    <span
-                      key={index}
-                      className="text-sm px-3 py-1 bg-blue-50 text-blue-700 rounded-full"
-                    >
-                      {service}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
+        <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Related Case Studies</CardTitle>
-              <CardDescription>
-                Case studies related to this testimonial
-              </CardDescription>
+              <CardTitle>Project Information</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {testimonial.relatedCaseStudies.map((caseStudy, index) => (
-                  <div
-                    key={index}
-                    className="p-4 border rounded-md hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                      <span className="font-medium">{caseStudy}</span>
-                    </div>
-                    <Button variant="link" size="sm" className="mt-2 h-8 pl-0">
-                      View Case Study
-                    </Button>
+            <CardContent className="space-y-4">
+              {testimonial.project_details?.services && testimonial.project_details.services.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Services Provided</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {testimonial.project_details.services.map((service, index) => (
+                      <div
+                        key={index}
+                        className="bg-gray-100 text-gray-800 text-xs font-medium px-2.5 py-0.5 rounded"
+                      >
+                        {service}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
+
+              {testimonial.related_case_studies && testimonial.related_case_studies.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">
+                    Case studies related to this testimonial
+                  </h4>
+                  <ul className="space-y-2">
+                    {testimonial.related_case_studies.map((caseStudy, index) => (
+                      <li key={index} className="flex items-center gap-2">
+                        <FileText className="h-4 w-4 text-blue-500" />
+                        <span className="text-sm">{caseStudy}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </CardContent>
           </Card>
-        </div>
 
-        <div className="md:col-span-1 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Client Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Building className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Company:</span>
-                  <span>{testimonial.companyName}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Project Type:</span>
-                  <span>{testimonial.projectType}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Email:</span>
-                  <span>{testimonial.contactInfo.email}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Phone:</span>
-                  <span>{testimonial.contactInfo.phone}</span>
-                </div>
+              <div className="flex items-center gap-2">
+                <Building className="h-4 w-4 text-muted-foreground" />
+                <span>{testimonial.client_company}</span>
               </div>
+              <div className="flex items-center gap-2">
+                <Briefcase className="h-4 w-4 text-muted-foreground" />
+                <span>{testimonial.project_type}</span>
+              </div>
+              {testimonial.contact_info?.email && (
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  <span>{testimonial.contact_info.email}</span>
+                </div>
+              )}
+              {testimonial.contact_info?.phone && (
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  <span>{testimonial.contact_info.phone}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -252,55 +260,32 @@ export default function TestimonialDetailPage({
               <CardTitle>Project Timeline</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Start Date:</span>
-                  <span>
+              {testimonial.project_details?.start_date && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">
+                    Start Date
+                  </span>
+                  <span className="font-medium">
                     {new Date(
-                      testimonial.projectDetails.startDate,
+                      testimonial.project_details.start_date
                     ).toLocaleDateString()}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">End Date:</span>
-                  <span>
+              )}
+              {testimonial.project_details?.end_date && (
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">End Date</span>
+                  <span className="font-medium">
                     {new Date(
-                      testimonial.projectDetails.endDate,
+                      testimonial.project_details.end_date
                     ).toLocaleDateString()}
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Testimonial Date:</span>
-                  <span>{new Date(testimonial.date).toLocaleDateString()}</span>
-                </div>
+              )}
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Testimonial Date:</span>
+                <span>{testimonial.date ? new Date(testimonial.date).toLocaleDateString() : "N/A"}</span>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button className="w-full justify-start">
-                <FileText className="h-4 w-4 mr-2" />
-                <span>Add to Proposal</span>
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Share className="h-4 w-4 mr-2" />
-                <span>Share Testimonial</span>
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <Copy className="h-4 w-4 mr-2" />
-                <span>Copy Quote</span>
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                <span>Request Follow-up</span>
-              </Button>
             </CardContent>
           </Card>
         </div>

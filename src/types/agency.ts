@@ -300,4 +300,55 @@ export interface ServiceFormData {
     author: string;
     title: string;
   }[];
+}
+
+// Testimonial Types
+export interface Testimonial {
+  id?: string;
+  user_id?: string;
+  client_name: string;
+  client_position?: string;
+  client_company?: string;
+  content: string;
+  rating?: number;
+  image_url?: string;
+  date?: string;
+  project_type?: string;
+  featured?: boolean;
+  contact_info?: {
+    email?: string;
+    phone?: string;
+  };
+  project_details?: {
+    start_date?: string;
+    end_date?: string;
+    services?: string[];
+    results?: string[];
+  };
+  related_case_studies?: string[];
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface TestimonialFormData {
+  client_name: string;
+  client_position?: string;
+  client_company?: string;
+  content: string;
+  rating?: number;
+  image_url?: string;
+  date?: string;
+  project_type?: string;
+  featured?: boolean;
+  contact_info?: {
+    email?: string;
+    phone?: string;
+  };
+  project_details?: {
+    start_date?: string;
+    end_date?: string;
+    services?: string[];
+    results?: string[];
+  };
+  related_case_studies?: string[];
 } 

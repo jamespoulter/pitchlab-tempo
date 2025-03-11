@@ -6,17 +6,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Star, X } from "lucide-react";
+import { TestimonialFormData } from "@/types/agency";
+import { createTestimonial } from "@/utils/supabase-client";
+import { toast } from "sonner";
 
 interface AddTestimonialModalProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onSave?: (testimonial: any) => void;
+  userId?: string | null;
 }
 
 export function AddTestimonialModal({
   open,
   onOpenChange,
   onSave,
+  userId,
 }: AddTestimonialModalProps) {
   const [clientName, setClientName] = useState("");
   const [clientTitle, setClientTitle] = useState("");
@@ -26,29 +31,66 @@ export function AddTestimonialModal({
   const [projectType, setProjectType] = useState("");
   const [avatar, setAvatar] = useState("");
   const [featured, setFeatured] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSave = () => {
-    const date = new Date().toISOString().split("T")[0];
-    const newTestimonial = {
-      clientName,
-      clientTitle,
-      companyName,
-      quote,
-      rating,
-      date,
-      projectType,
-      avatar:
-        avatar ||
-        `https://api.dicebear.com/7.x/avataaars/svg?seed=${clientName}`,
-      featured,
-    };
-    
-    if (onSave) {
-      onSave(newTestimonial);
+  const handleSave = async () => {
+    if (!userId) {
+      toast.error("You must be logged in to add a testimonial");
+      return;
     }
+
+    setIsLoading(true);
     
-    if (onOpenChange) {
-      onOpenChange(false);
+    try {
+      const date = new Date().toISOString().split("T")[0];
+      
+      const testimonialData: TestimonialFormData = {
+        client_name: clientName,
+        client_position: clientTitle,
+        client_company: companyName,
+        content: quote,
+        rating,
+        date,
+        project_type: projectType,
+        image_url: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${clientName}`,
+        featured,
+        contact_info: {
+          email: "",
+          phone: "",
+        },
+        project_details: {
+          services: [],
+          results: [],
+        },
+        related_case_studies: [],
+      };
+      
+      const newTestimonial = await createTestimonial(userId, testimonialData);
+      
+      if (onSave) {
+        onSave(newTestimonial);
+      }
+      
+      // Reset form
+      setClientName("");
+      setClientTitle("");
+      setCompanyName("");
+      setQuote("");
+      setRating(5);
+      setProjectType("");
+      setAvatar("");
+      setFeatured(false);
+      
+      toast.success("Testimonial added successfully");
+      
+      if (onOpenChange) {
+        onOpenChange(false);
+      }
+    } catch (error) {
+      console.error("Error adding testimonial:", error);
+      toast.error("Failed to add testimonial");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -177,10 +219,13 @@ export function AddTestimonialModal({
           <Button
             variant="outline"
             onClick={() => onOpenChange && onOpenChange(false)}
+            disabled={isLoading}
           >
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save Testimonial</Button>
+          <Button onClick={handleSave} disabled={isLoading}>
+            {isLoading ? "Saving..." : "Save Testimonial"}
+          </Button>
         </div>
       </div>
     </div>
