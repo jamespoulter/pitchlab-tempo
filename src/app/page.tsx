@@ -24,17 +24,36 @@ import {
   ArrowRight
 } from "lucide-react";
 import { createClient } from "../../supabase/client";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useLayoutEffect } from "react";
+
+// Define types for Stripe product data
+interface StripePrice {
+  id: string;
+  currency: string;
+  unit_amount: number;
+  interval: string;
+  interval_count: number;
+  trial_period_days: number;
+}
+
+interface StripeProduct {
+  id: string;
+  name: string;
+  description: string;
+  active: boolean;
+  price: StripePrice;
+  features: string[];
+}
 
 // Animation variants
 const fadeIn = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.6 } }
+  visible: { opacity: 1, transition: { duration: 0.6, ease: "easeOut" } }
 };
 
 const slideUp = {
   hidden: { y: 30, opacity: 0 },
-  visible: { y: 0, opacity: 1, transition: { duration: 0.6 } }
+  visible: { y: 0, opacity: 1, transition: { duration: 0.6, ease: "easeOut" } }
 };
 
 const staggerContainer = {
@@ -42,14 +61,16 @@ const staggerContainer = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1
+      staggerChildren: 0.1,
+      ease: "easeOut",
+      delayChildren: 0.1
     }
   }
 };
 
 const itemFadeIn = {
   hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
 };
 
 export default function Home() {
@@ -64,9 +85,18 @@ export default function Home() {
   const [errorMessage, setErrorMessage] = useState("");
   const [animationsTriggered, setAnimationsTriggered] = useState(false);
   const [activeRole, setActiveRole] = useState<"founder" | "newBusiness" | "marketing">("founder");
+  const [product, setProduct] = useState<StripeProduct | null>(null);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(true);
   
   // Reference to check if component is mounted
   const isMounted = useRef(false);
+  
+  // Use layout effect to trigger animations as early as possible
+  useLayoutEffect(() => {
+    if (typeof window !== 'undefined') {
+      setAnimationsTriggered(true);
+    }
+  }, []);
   
   useEffect(() => {
     // Set mounted flag
@@ -88,10 +118,29 @@ export default function Home() {
     };
     
     getUser();
+    fetchProductData();
+    
+    // Force animation trigger on window load
+    const handleLoad = () => {
+      if (isMounted.current) {
+        setAnimationsTriggered(true);
+      }
+    };
+    
+    window.addEventListener('load', handleLoad);
+    
+    // Fallback: If animations haven't triggered after 500ms, force them
+    const fallbackTimer = setTimeout(() => {
+      if (isMounted.current) {
+        setAnimationsTriggered(true);
+      }
+    }, 500);
     
     return () => {
       isMounted.current = false;
       clearTimeout(timer);
+      clearTimeout(fallbackTimer);
+      window.removeEventListener('load', handleLoad);
     };
   }, []);
 
@@ -197,6 +246,41 @@ export default function Home() {
     }
   };
 
+  // Function to fetch product data from Stripe
+  const fetchProductData = async () => {
+    setIsLoadingProduct(true);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase.functions.invoke('get-product', {
+        body: {
+          product_id: "prod_RtvFwU7NJ0AK7g" // Pitchhub Premium product ID
+        }
+      });
+      
+      if (error) {
+        console.error("Error fetching product data:", error);
+      } else {
+        console.log("Product data:", data);
+        setProduct(data);
+      }
+    } catch (error) {
+      console.error("Error fetching product data:", error);
+    } finally {
+      setIsLoadingProduct(false);
+    }
+  };
+  
+  // Format currency amount
+  const formatAmount = (amount: number | null | undefined, currency: string = 'GBP') => {
+    if (amount === null || amount === undefined) return '£250';
+    
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 0,
+    }).format(amount / 100);
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header/Navigation */}
@@ -248,8 +332,8 @@ export default function Home() {
                   <Link href="/sign-in">Login</Link>
                 </Button>
                 <Button asChild className="rounded-full font-medium">
-                  <Link href="#waitlist">
-                    Join Waitlist
+                  <Link href="/pricing">
+                    Start Free Trial
                   </Link>
                 </Button>
               </>
@@ -264,7 +348,7 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div
               initial="hidden"
-              animate={animationsTriggered ? "visible" : "hidden"}
+              animate="visible"
               variants={fadeIn}
               className="max-w-xl"
             >
@@ -273,7 +357,7 @@ export default function Home() {
               </Badge>
               <motion.h1 
                 initial="hidden"
-                animate={animationsTriggered ? "visible" : "hidden"}
+                animate="visible"
                 variants={slideUp}
                 className="text-4xl md:text-5xl lg:text-6xl font-heading font-bold tracking-tight mb-6"
               >
@@ -282,7 +366,7 @@ export default function Home() {
               </motion.h1>
               <motion.p 
                 initial="hidden"
-                animate={animationsTriggered ? "visible" : "hidden"}
+                animate="visible"
                 variants={slideUp}
                 className="text-xl text-gray-600 mb-8"
               >
@@ -290,13 +374,13 @@ export default function Home() {
               </motion.p>
               <motion.div 
                 initial="hidden"
-                animate={animationsTriggered ? "visible" : "hidden"}
+                animate="visible"
                 variants={fadeIn}
                 className="flex flex-col sm:flex-row gap-4"
               >
                 <Button size="lg" className="rounded-full px-8 font-medium" asChild>
-                  <Link href="#waitlist">
-                    Join the Waitlist
+                  <Link href="/pricing">
+                    Start 7-Day Free Trial
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
@@ -310,7 +394,7 @@ export default function Home() {
             
             <motion.div
               initial={{ opacity: 0, y: 20 }}
-              animate={animationsTriggered ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.3 }}
               className="hidden md:block"
             >
@@ -1176,10 +1260,12 @@ export default function Home() {
                   <div className="bg-white/20 text-white rounded-full px-4 py-1 text-sm font-medium mb-2">
                     Most Popular
                   </div>
-                  <h3 className="text-2xl font-heading font-bold">PitchHub Plus</h3>
+                  <h3 className="text-2xl font-heading font-bold">{isLoadingProduct ? "Loading..." : product?.name || "PitchHub Plus"}</h3>
                   <div className="mt-2 flex items-baseline gap-2">
-                    <span className="text-5xl font-heading font-bold">£45</span>
-                    <span className="text-white/80 ml-2">/month per user</span>
+                    <span className="text-5xl font-heading font-bold">
+                      {isLoadingProduct ? "..." : formatAmount(product?.price?.unit_amount, product?.price?.currency)}
+                    </span>
+                    <span className="text-white/80 ml-2">/{isLoadingProduct ? "month" : product?.price?.interval || "month"} per user</span>
                   </div>
                 </div>
               </div>
@@ -1191,44 +1277,58 @@ export default function Home() {
                   variants={staggerContainer}
                   className="space-y-4 mb-8"
                 >
-                  {[
-                    "Unlimited case studies & content storage",
-                    "AI-powered proposal builder",
-                    "Team collaboration tools",
-                    "Custom branding & templates",
-                    "Proposal tracking & analytics",
-                    "Priority support",
-                    "7-day free trial"
-                  ].map((feature, index) => (
-                    <motion.li 
-                      key={index} 
-                      variants={itemFadeIn}
-                      className="flex items-start gap-2"
-                    >
-                      <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                      <span>{feature}</span>
-                    </motion.li>
-                  ))}
+                  {isLoadingProduct ? (
+                    Array(6).fill(0).map((_, index) => (
+                      <li key={index} className="flex items-center">
+                        <div className="flex-shrink-0 h-5 w-5 text-primary">
+                          <CheckCircle2 size={18} />
+                        </div>
+                        <span className="ml-3 text-gray-600">Loading feature...</span>
+                      </li>
+                    ))
+                  ) : (
+                    (product?.features || [
+                      "Unlimited case studies & content storage",
+                      "AI-powered proposal builder",
+                      "Team collaboration tools",
+                      "Custom branding & templates",
+                      "Proposal tracking & analytics",
+                      "Priority support",
+                    ]).map((feature, index) => (
+                      <motion.li 
+                        key={index} 
+                        variants={itemFadeIn}
+                        className="flex items-center"
+                      >
+                        <div className="flex-shrink-0 h-5 w-5 text-primary">
+                          <CheckCircle2 size={18} />
+                        </div>
+                        <span className="ml-3 text-gray-600">{feature}</span>
+                      </motion.li>
+                    ))
+                  )}
                 </motion.ul>
-                <div className="text-center">
-                  <Button size="lg" className="w-full rounded-full font-medium" asChild>
-                    <Link href="#waitlist">
-                      Join the Waitlist
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                  <p className="text-sm text-gray-500 mt-4">
-                    Limited-time offer for waitlist members only
+                
+                <Button className="w-full py-6 text-lg font-medium" asChild>
+                  <Link href="#waitlist">
+                    Join Waitlist
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+                
+                {!isLoadingProduct && product?.price?.trial_period_days && (
+                  <p className="text-xs text-center w-full mt-3 text-gray-500">
+                    Includes {product.price.trial_period_days}-day free trial
                   </p>
-                </div>
+                )}
               </div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Waitlist Section */}
-      <section id="waitlist" className="py-20 bg-gray-50">
+      {/* Call to Action Section */}
+      <section id="cta" className="py-20 bg-gray-50">
         <div className="container mx-auto px-4">
           <motion.div 
             initial="hidden"
@@ -1238,11 +1338,11 @@ export default function Home() {
             className="max-w-3xl mx-auto text-center mb-12"
           >
             <Badge className="mb-4 bg-primary/10 text-primary hover:bg-primary/10 px-3 py-1 font-medium">
-              Waitlist
+              Get Started
             </Badge>
-            <h2 className="text-3xl font-heading font-bold mb-4">Join the PitchHub Waitlist</h2>
+            <h2 className="text-3xl font-heading font-bold mb-4">Ready to Transform Your Agency's New Business Process?</h2>
             <p className="text-lg text-gray-600">
-              Be the first to know when we launch and secure early bird pricing.
+              Start your 7-day free trial today and see the difference PitchHub can make.
             </p>
           </motion.div>
 
@@ -1253,78 +1353,32 @@ export default function Home() {
             viewport={{ once: true }}
             className="max-w-md mx-auto"
           >
-            <form onSubmit={handleSubmit} className="bg-white p-8 rounded-xl shadow-md border border-gray-100">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
-                  <Input 
-                    id="name" 
-                    value={formState.name}
-                    onChange={handleInputChange}
-                    placeholder="John Doe" 
-                    className="mt-1 rounded-lg" 
-                    disabled={formStatus === "submitting" || formStatus === "success"}
-                  />
+            <div className="bg-white p-8 rounded-xl shadow-md border border-gray-100 text-center">
+              <div className="mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 text-primary mb-4">
+                  <Sparkles className="h-8 w-8" />
                 </div>
-                <div>
-                  <Label htmlFor="email" className="text-gray-700 font-medium">Work Email</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    value={formState.email}
-                    onChange={handleInputChange}
-                    placeholder="john@youragency.com" 
-                    className="mt-1 rounded-lg" 
-                    disabled={formStatus === "submitting" || formStatus === "success"}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="company" className="text-gray-700 font-medium">Agency Name</Label>
-                  <Input 
-                    id="company" 
-                    value={formState.company}
-                    onChange={handleInputChange}
-                    placeholder="Your Agency" 
-                    className="mt-1 rounded-lg" 
-                    disabled={formStatus === "submitting" || formStatus === "success"}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="role" className="text-gray-700 font-medium">Your Role</Label>
-                  <Input 
-                    id="role" 
-                    value={formState.role}
-                    onChange={handleInputChange}
-                    placeholder="e.g. New Business Director" 
-                    className="mt-1 rounded-lg" 
-                    disabled={formStatus === "submitting" || formStatus === "success"}
-                  />
-                </div>
-                
-                {errorMessage && (
-                  <div className="text-red-500 text-sm">{errorMessage}</div>
-                )}
-                
-                {formStatus === "success" ? (
-                  <div className="bg-green-50 text-green-700 p-3 rounded-md flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-                    <span>Thanks for joining! We'll be in touch soon.</span>
-                  </div>
-                ) : (
-                  <Button 
-                    type="submit" 
-                    className="w-full rounded-full font-medium"
-                    disabled={formStatus === "submitting"}
-                  >
-                    {formStatus === "submitting" ? "Submitting..." : "Join Waitlist"}
-                  </Button>
-                )}
-                
-                <p className="text-xs text-gray-500 text-center">
-                  We'll only use your email to send you PitchHub updates. No spam, ever.
+                <h3 className="text-2xl font-bold mb-2">PitchHub Plus</h3>
+                <p className="text-gray-600 mb-4">
+                  Full access to all features with our 7-day free trial
                 </p>
+                <div className="flex items-center justify-center gap-2 mb-6">
+                  <span className="text-4xl font-bold">£45</span>
+                  <span className="text-gray-500">/month per user</span>
+                </div>
               </div>
-            </form>
+              
+              <Button size="lg" className="w-full rounded-full font-medium" asChild>
+                <Link href="/pricing">
+                  Start Your Free Trial
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              
+              <p className="text-sm text-gray-500 mt-4">
+                No credit card required to start your trial
+              </p>
+            </div>
           </motion.div>
         </div>
       </section>

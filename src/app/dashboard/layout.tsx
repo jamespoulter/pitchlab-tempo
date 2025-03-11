@@ -4,6 +4,7 @@ import { createClient } from "../../../supabase/server";
 import { redirect } from "next/navigation";
 import { checkUserSubscription } from "@/app/actions";
 import Script from "next/script";
+import StripeRedirectHandler from "@/components/stripe-redirect-handler";
 
 export default async function DashboardLayout({
   children,
@@ -35,6 +36,7 @@ export default async function DashboardLayout({
       <div className="flex-1 flex flex-col overflow-hidden">
         <DashboardNavbar />
         <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
+          <StripeRedirectHandler />
           {children}
         </main>
       </div>

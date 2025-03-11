@@ -1,4 +1,5 @@
 import { FormMessage, Message } from "@/components/form-message";
+import { GoogleButton } from "@/components/google-button";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,27 +12,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Check } from "lucide-react";
 
 export default async function Signup(props: {
-  searchParams: Promise<Message & { plan?: string; trial?: string }>;
+  searchParams: Promise<Message & { plan?: string; trial?: string; redirect_to?: string }>;
 }) {
   const searchParams = await props.searchParams;
   const planId = searchParams.plan;
   const trialDays = searchParams.trial || "7";
+  const redirectTo = searchParams.redirect_to;
   
   // Fetch plan details if a plan ID is provided
   let planDetails = null;
   if (planId) {
     const supabase = await createClient();
+    console.log("Fetching plan details for plan ID:", planId);
+    
     const { data: planData, error } = await supabase.functions.invoke(
       "get-plans",
       {
         body: {
-          product_id: "prod_RuEdYVyOF1Vitg" // PitchHub Plus product ID
+          product_id: "prod_RtvFwU7NJ0AK7g" // PitchHub Premium test product ID
         }
       }
     );
     
+    console.log("Plan data response:", planData);
+    console.log("Plan data error:", error);
+    
     if (planData && Array.isArray(planData)) {
       planDetails = planData.find((plan: any) => plan.id === planId);
+      console.log("Found plan details:", planDetails);
     }
   }
   
@@ -61,14 +69,14 @@ export default async function Signup(props: {
           {planDetails && (
             <Card className="mb-6 bg-blue-50">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xl">Selected Plan: {planDetails.product?.name || "PitchHub Plus"}</CardTitle>
+                <CardTitle className="text-xl">Selected Plan: {planDetails.product?.name || "PitchHub Premium"}</CardTitle>
                 <CardDescription className="text-lg font-semibold">
                   {formatAmount(planDetails.amount, planDetails.currency)}/{planDetails.interval || "month"}
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-gray-600 mb-2">
-                  {planDetails.product?.metadata?.description || "Full access to all PitchHub Plus features"}
+                  {planDetails.product?.metadata?.description || "Full access to all PitchHub Premium features"}
                 </p>
                 <div className="flex items-center text-sm text-blue-600">
                   <Check size={16} className="mr-1" />
@@ -140,6 +148,7 @@ export default async function Signup(props: {
             {/* Hidden fields to pass plan information */}
             {planId && <input type="hidden" name="plan_id" value={planId} />}
             {trialDays && <input type="hidden" name="trial_days" value={trialDays} />}
+            {redirectTo && <input type="hidden" name="redirect_to" value={redirectTo} />}
 
             <SubmitButton
               formAction={signUpAction}
@@ -148,6 +157,17 @@ export default async function Signup(props: {
             >
               {planDetails ? "Sign up & Continue to Payment" : "Sign up"}
             </SubmitButton>
+
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border"></span>
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or continue with</span>
+              </div>
+            </div>
+
+            <GoogleButton text="Sign up with Google" redirectTo={redirectTo} />
 
             <FormMessage message={searchParams} />
           </form>

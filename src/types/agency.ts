@@ -257,6 +257,7 @@ export interface Service {
   description: string;
   features: string[];
   priceRange: string;
+  pricerange?: string;
   timeline: string;
   category: string;
   icon: string;
@@ -307,6 +308,7 @@ export interface Testimonial {
   id?: string;
   user_id?: string;
   client_name: string;
+<<<<<<< HEAD
   client_position?: string;
   client_company?: string;
   content: string;
@@ -326,12 +328,24 @@ export interface Testimonial {
     results?: string[];
   };
   related_case_studies?: string[];
+=======
+  client_company?: string;
+  client_role?: string;
+  client_image_url?: string;
+  content: string;
+  rating?: number;
+  project_name?: string;
+  project_date?: string;
+  is_featured?: boolean;
+  display_order?: number;
+>>>>>>> b2150d5db3731a5110528e5d61736cb74f443aaa
   created_at?: string;
   updated_at?: string;
 }
 
 export interface TestimonialFormData {
   client_name: string;
+<<<<<<< HEAD
   client_position?: string;
   client_company?: string;
   content: string;
@@ -351,4 +365,15 @@ export interface TestimonialFormData {
     results?: string[];
   };
   related_case_studies?: string[];
+=======
+  client_company?: string;
+  client_role?: string;
+  client_image_url?: string;
+  content: string;
+  rating?: number;
+  project_name?: string;
+  project_date?: string;
+  is_featured?: boolean;
+  display_order?: number;
+>>>>>>> b2150d5db3731a5110528e5d61736cb74f443aaa
 } 
